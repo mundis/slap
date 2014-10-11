@@ -1,0 +1,8 @@
+emailaddr="spooferman@excite.com"	# the package maintainer
+pkgname="slap"	# should be lower-case
+major="2"
+minor="4"
+micro="4"
+
+formats="tgz taz"
+spool=$HOME/webs/uutil/outbox

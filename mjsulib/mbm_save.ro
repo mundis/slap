@@ -1,0 +1,46 @@
+'\" t
+.\" MJS Portable C Library
+.\" Module: quick-reference manual-page for mbm_save()
+.\"
+.\" Copyright (c) 1997 Mike Spooner
+.\"----------------------------------------------------------------------
+.\" This program is free software; you can redistribute it and/or modify
+.\" it under the terms of the GNU General Public License as published by
+.\" the Free Software Foundation; either version 2 of the License, or
+.\" (at your option) any later version.
+.\"
+.\" This program is distributed in the hope that it will be useful,
+.\" but WITHOUT ANY WARRANTY; without even the implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+.\" GNU General Public License for more details.
+.\"
+.\" You should have received a copy of the GNU General Public License
+.\" along with this program; if not, write to the Free Software
+.\" Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+.\"----------------------------------------------------------------------
+.TD
+.TH mbm_save @LF 23jun97 "MJSulib"
+.SH NAME
+mbm_save \- save a bitmap to a file
+.SH SYNOPSIS
+#include "mjsu.h"
+
+BOOL mbm_save(MBITMAP *bm, FILE *pf);
+.SH DESCRIPTION
+\fBmbm_save()\fP writes the bitmap at \fIbm\fP
+at the current offset in the open file
+designated by \fIpf\fP.
+.LP
+The bitmap is written to the file in MBM format.
+.LP
+It does not automatically reclaim the resources used by bitmap - to do so, you
+must explicitly call \fBmbm_free()\fP.
+.SH RETURNS
+If the data cannot be written to the file (eg: due to lack of disk-space),
+NO is returned. Otherwise YES is returned.
+.SH SEE ALSO
+\fBmbm(@FF)\fP,
+\fBmbm_load(@LF)\fP, \fBmbm_free(@LF)\fP.
+.SH AVAILABILITY
+\fBmbm_save()\fP is written in C, conforming to ANSI X3.159-1989
+(hosted program environment).

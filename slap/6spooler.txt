@@ -1,0 +1,271 @@
+ [previous] [up]  [Image]         [Image]          [Image] [Image] [Image]
+
+                           SmartLabel Printing via
+                              the Print-Spooler
+
+    * Doing it Properly
+
+    * Serial Ports under UNIX
+
+    * The SVR4 Spooler (lp and lpsched)
+           Solaris 2, Solaris 7, Solaris 8
+           SunSoft Print Server (optional replacement for lpsched on
+           Solaris 2.4, 2.5, 2.5.1)
+           HP-UX 10.x and later
+           SCO OpenServer
+           DYNIX/ptx 2.x and later
+           ESIX 4.x
+
+    * The SVR3 Spooler (lp and lpsched)
+           Irix 5.x & 6.x
+           SCO UNIX 3.2
+           HP-UX upto 8.x
+           DYNIX/ptx 1.x
+
+    * The BSD Spooler (lpr and lpd)
+           Linux
+           NetBSD, OpenBSD, FreeBSD, UNIX BSD 4.x
+           SunOS 3.x, SunOS 4.x
+           DYNIX 3.x
+           OSF1
+           Sony NeWS-OS 4.x
+           many others
+
+    * The LPRng Spooler (aka PLP)
+           used at many sites in place of the native UNIX print spooler
+
+----------------------------------------------------------------------------
+
+Doing it Properly
+
+Rather than keep it to themselves, many people will want to deploy their
+Smart Label Printer as a shared resource, via their specific UNIX
+print-spooler software. This allows label printing using "normal" print
+commands, rather than invoking slap directly. The UNIX print-spooler also
+enables the printer to be shared across a network.
+
+Configuring the UNIX print-spooler for a Smart Label Printer is quite easy
+to do (sample scripts are provided with the distribution). The examples
+below are all designed to provide the following behaviour:
+
+   * print-jobs can be submitted with the spooler's normal commands, such as
+     lp or lpr. Users will not be forced to use yet another printer-specific
+     program.
+
+   * printer and print-queue status can be queried with the spooler's
+     standard "status" commands, such as lpstat or lpq, on those platforms
+     where such is possible. Users will not be forced to use yet another
+     printer-specific program (Hewlett-Packard, can you hear me?).
+
+   * if the printer runs out of labels half-way through a job, the job will
+     wait until new labels are loaded. Whilst waiting for more labels, the
+     print-queue status will (where possible) indicate "printer empty: load
+     labels". As soon as more labels are loaded, the job will continue and
+     the print-queue status will become "ready and printing". The print-job
+     will not be reprinted unnecessarily.
+
+   * fatal printing errors (cable pulled out, label jammed in printer,
+     broken printer, command-line errors, garbled communications, printer
+     switched off half way through a job) are handled gracefully: the next
+     print-job is not adversely affected, and the fault is reported. Where
+     possible, a failed print-job will be retried a short while later.
+
+   * except where disallowed by local administrative policies, users can
+     select whether an individual print job is accompanied by a one-label
+     banner page or not. All local administrative policies can be applied by
+     the standard spooler mechanisms.
+
+----------------------------------------------------------------------------
+
+Serial Ports under UNIX
+
+Some UNIX systems have distinct serial-port device-files for incoming
+(login) use and for outgoing (call-up) use. When using a Smart Label Printer
+on such systems, you should specify the "call-up" device-file rather than
+the "login" one. For instance:
+
+                  Solaris 2.x:  /dev/cua/a /dev/cua/b /dev/cua/0 etc
+         Linux (kernel < 2.2):  /dev/cua0  /dev/cua1  etc
+         Linux (kernel >= 2.2): /dev/ttyS0 /dev/ttyS1 etc
+                DYNIX/ptx 2.0:  /dev/cua/0 /dev/cua/1 etc
+                  SunOS 4.1.3:  /dev/cua0  /dev/cua1  etc
+                     IRIX 5.3:  /dev/ttym1 /dev/ttym2 etc
+
+When configuring the print-spooler, there is no need to specify the
+serial-port baud-rate or other stty/termios settings. slap always hunts for
+the printers' current baud rate (and switches the printer to its' fastest
+workable baud rate); and always explicitly sets the stty/termios modes
+needed to communicate with the printer.
+----------------------------------------------------------------------------
+
+System V Release 4 (lpsched and lp)
+
+NOTE:  this also applies to the "SunSoft Print Server" package that
+optionally replaces the SVR4 software for Solaris 2.4, 2.5 and 2.5.1, and
+comes as standard with Solaris 2.6.
+
+  1. create a new "printer-interface" script from the template
+
+     A template SVR4 "printer-interface" script is installed with the rest
+     of the software, as install-dir/lib/slapf.svr4.
+
+     Edit this script, and change the label-size, thus:
+
+             MEDIA=label-type
+
+     The available label-types are listed in the manpage.
+
+     You may also need to change the setting of BAUDMAP: see the comments in
+     the script.
+
+     Save your changes in another file, such as
+     install_dir/lib/queue-name.pi.
+
+  2. create the print-queue
+
+             lpadmin -p queue-name -I simple -T vanilla \
+                     -i install-dir/lib/queue-name.pi \
+                     -o nobanner -v port
+
+     where port is the name of the serial-port device to which the printer
+     is attached, install-dir is the directory where slap was installed, and
+     queue-name is the name of the printer.
+
+     NOTE: you do not need to specify the "-o stty=..." option.
+
+     There are esoteric facilities (custom alerts, printer-classes, etc)
+     that can be specified with other options - see your system
+     documentation, or the manpage for lpadmin.
+
+By default, the provided printer-interface program prints a one-label banner
+page for each print-job, unless the "-onobanner" flag is given on the lp
+command-line. This default can be changed by editing slapf.svr4: change
+"printbanner=yes" to be "printbanner=no".
+
+When submitting print-jobs with lp, you can specify the font to use on the
+command line, eg:
+
+        lp -d sl1 -o font=thames-bold-italic-24  file1.txt
+
+The available fonts are listed in the manpage.
+----------------------------------------------------------------------------
+
+System V Release 3 (lpsched and lp)
+
+  1. create a new "printer-interface" script from the template
+
+     A template SVR3 "printer-interface" script is installed with the rest
+     of the software, as install-dir/lib/slapf.svr3.
+
+     Edit this script, and change the label-size, thus:
+
+             MEDIA=label-type
+
+     The available label-types are listed in the manpage.
+
+     You may also need to change the setting of BAUDMAP: see the comments in
+     the script.
+
+     Save your changes in another file, such as
+     install_dir/lib/queue-name.pi.
+
+  2. create the print-queue
+
+             lpadmin -p queue-name \
+                     -i install-dir/lib/queue-name.pi \
+                     -v port
+
+     where port is the name of the serial-port device to which the printer
+     is attached, install-dir is the directory where slap was installed, and
+     queue-name is the name of the printer.
+
+By default, the provided printer-interface program prints a one-label banner
+page for each print-job, unless the "-onobanner" flag is given on the lp
+command-line. This default can be changed by editing slapf.svr3: change
+"printbanner=yes" to be "printbanner=no".
+
+When submitting print-jobs with lp, you can specify the font to use on the
+command line, eg:
+
+        lp -d sl1 -o font=thames-bold-italic-24  file1.txt
+
+The available fonts are listed in the manpage.
+
+Note that the "out-of-labels" printer-status will be reported to the user by
+mail, rather than being made visible in the output of lpstat. The latter
+seems to be impossible under the SVR3 spooler.
+----------------------------------------------------------------------------
+
+BSD (lpr and lpd)
+
+  1. create a new "input-filter" script from the template
+
+     A template shell-script filter is provided as
+     install-dir/lib/slapf.bsd.
+
+     Edit this script, and change the font selection and label-size, thus:
+
+             FONT=font-name
+             ...
+             MEDIA=label-type
+
+     The available font-names and label-types are listed in the manpage.
+
+     You may also need to change the setting of BAUDMAP: see the comments in
+     the script.
+
+     Save your changes in another file, such as
+     install_dir/lib/queue-name.if.
+
+  2. create the print-queue
+
+     Add the following entry to /etc/printcap:
+
+     queue-name:\
+             :lp=port:rw:\
+             :if=install-dir/lib/queue-name.if:\
+             :sf:sb:sh:sd=spool-directory:
+
+     where port is the name of the serial-port device to which the printer
+     is attached, install-dir is the directory where slap was installed, and
+     queue-name is the name of the printer. Spool-directory is as described
+     in your local lpd manpage.
+
+     NOTE: you should not need to specify any of the :br:fc:fs:xc:xs:
+     options in the printcap entry.
+
+Unlike System V UNIX, the standard BSD print commands do not allow you to
+specify arbitrary per-job print-options, such as selecting the typeface or
+font size.
+
+A common "fix" for this shortcoming is to define several logical printers
+all pointing to the same physical device, but each defined with a different
+input filter.
+
+There are several other "fixes" for this LPD design flaw, including using
+another print-spooler altogether (such as LPRng). See the newsgroups,
+mailing-lists, et al.
+
+Depending on your version of "lpd", printer errors such as "not responding",
+"out of labels" or "label jammed" may be reported to the console, to the
+user's terminal or even via "syslog". You can direct these messages to a
+specific named file or device by adding an :lf=path: element to the printcap
+entry for the printer.
+----------------------------------------------------------------------------
+
+LPRng
+
+The above "BSD" method works with older releases of LPRng, too.
+
+Newer releases of LPRng require some additional steps (thanks to Gregory
+Borzecki for these instructions):
+
+   * Change /etc/lpr.config to allow network connections from the
+     print-server to itself (!): uncomment the entry for <@localhost>.
+   * Change the ownership of the input filter to user daemon, group daemon,
+     and change the permissions to 0600.
+
+LPRng has many more capabilities, thus a more specific method for
+integrating slap with LPRng would be worth doing.
+----------------------------------------------------------------------------
+ [previous] [up]  [Image]              [Image]           [home]  [mail me]

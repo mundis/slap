@@ -1,0 +1,408 @@
+'\" t
+.\" slap: UNIX SmartLabel printing program, version 2
+.\" Module: quick-reference manual-page
+.\"
+.\" Copyright (c) 1997-2000 Mike Spooner
+.\"----------------------------------------------------------------------
+.\" This program is free software; you can redistribute it and/or modify
+.\" it under the terms of the GNU General Public License as published by
+.\" the Free Software Foundation; either version 2 of the License, or
+.\" (at your option) any later version.
+.\"
+.\" This program is distributed in the hope that it will be useful,
+.\" but WITHOUT ANY WARRANTY; without even the implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+.\" GNU General Public License for more details.
+.\"
+.\" You should have received a copy of the GNU General Public License
+.\" along with this program; if not, write to the Free Software
+.\" Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+.\"----------------------------------------------------------------------
+.TD
+.TH slap @UC "09feb2001" "MJSprogs"
+.SH NAME
+slap \-  print text labels on a Smart Label Printer
+.SH SYNOPSIS
+slap [ -b \fImaxbaud\fP -c \fInum\fP -f \fIfont\fP -l -m \fIsize\fP -o \fIport\fP -p \fItype\fP -portrait -s -x \fInum\fP -version ] [\fIfiles\fP]
+.SH DESCRIPTION
+\fBslap\fP prints the specified text \fIfiles\fP on any Seiko Instruments'
+Smart Label Printer
+.ie t \(rg.
+.el (R).
+It is needed because such printers are not ASCII devices -
+they can only natively print raster images and communicate
+with the computer via a proprietary protocol.
+.LP
+If no \fIfiles\fP are specified, input is read from standard-input.
+.LP
+Text that would fall off the bottom of a label
+is printed on the next label.
+Text that would fall off the side of a label is silently discarded.
+A new label is started for each input file.
+.LP
+The Smart Label Printers allow a printed label to be "torn off"
+without having
+to feed an extra (blank) label first.
+\fBslap\fP deliberately avoids
+printing blank labels, even those caused by
+.ul
+explicit
+formfeeds or linefeeds.
+.LP
+\fBslap\fP recognises and interprets the common "control" characters:
+.RS
+.IP "carriage return" 20
+the print position is moved to the left margin.
+.IP "linefeed" 20
+the print position is moved down by the height of the current font, and
+is also moved to the left-hand margin.
+In this sense, \fBslap\fP interprets
+"linefeed" in the same way as most other UNIX programs: as a "newline".
+.IP "formfeed" 20
+the current label (if not blank) is ejected
+and the print position is moved
+to the start of the next label.
+.IP "backspace" 20
+the print position is moved back to where the last character was
+started, 
+resulting in "overprinting". Some other programs expect to be able
+to generate emboldened
+or underlined text using this method. A backspace as the first character
+of a line has no effect.
+.IP "horizontal tab" 20
+moves the print position to the next tab-stop. Tab-stops are
+set at every 8 spaces. 
+.LP
+.RE
+All other control characters cause a
+(possibly blank) glyph to be printed.
+.SH OPTIONS
+.IP "-b \fI maxbaud\fP" 10
+specifies the maximum baud-rate for communication with the printer.
+This is only needed to avoid bugs in some serial-port drivers. See NOTES.
+.IP "-c \fInum\fP" 10
+print \fInum\fP copies of each label. Default is 1.
+.IP "-f \fIfont\fP" 10
+display text using \fIfont\fP. The default is "areal-10". \fBslap\fP comes
+with the following fonts as standard:
+.TS
+center box ;
+c c c.
+Typefaces	Point-Sizes	Variations
+=	=	=
+career, areal,	8, 10, 12,	bold, italic,
+strait, thames	14, 18, 24	bold-italic
+.TE
+.IP
+Career is a monospaced "typewriter" typeface.
+Areal is a Swiss-style sans-serif typeface.
+Strait is a thin version of areal.
+Thames is a classical serif font,
+similar to that used in newspapers and books.
+.IP
+All the standard
+fonts use the ISO-8859-1 (ECMA-94 Latin-1) character-set.
+.IP
+If \fIfont\fP is not a
+filename,
+the directories listed in the
+\fBSLAP_FONTPATH\fP environment-variable are searched to
+locate a file with the name:
+.IP "" +8
+\fItypeface\fP\fB-\fP\fIvariation\fP\fB-\fP\fIpointsize\fP\fB.\fP\fItype\fP
+.IP "" -8
+where \fItype\fP is the printer-type (see -p flag, below), and the
+other components are as given in the table above. Note that \fI-variation\fP
+is omitted for non-bold, non-italic fonts.
+.IP "-l" 10
+emit warnings and error-messages in LaserWriter format (some print-spooling
+systems require this). Default is to emit undecorated messages.
+.IP "-m \fImedia-type\fP" 10
+tells \fBslap\fP what kind of labels are loaded in the printer, according
+to the following table:
+.TS
+center box ;
+l c c.
+Description	Size	\fImedia-type\fP
+=	=	=
+Standard Address Labels	28 x 89 mm	std
+Euro Address Labels	36 x 89 mm	euro
+Diskette Labels	54 x 70 mm	disk
+Shipping Labels	54 x 101 mm	ship
+Small Labels	28 x 51 mm	small
+Thin Labels	14 x 87 mm	strip
+35mm Slide Labels	38 x 11 mm	slide
+Cassette Labels	9 x 71 mm	cass
+Leitz-Folder Labels	36 x 190 mm	leitz
+Large Labels	51 x 190 mm	large
+.TE
+.IP
+The default is "std".
+.IP "-o \fIport\fP" 10
+Send output to \fIport\fP,
+which should be the pathname of the serial-device
+file to which the printer is connected. By default, \fBslap\fP
+assumes
+that it\'s standard-output
+is already connected to the appropriate serial-device file.
+.IP "-p \fIprinter-model\fP" 10
+specifies the \fItype\fP of printer.
+.TS
+center box ;
+l l l.
+Printer Model	Short Name	\fImodel\fP
+=	=	=
+Smart Label Printer	SLP	slp
+Smart Label Printer Plus	SLP Plus	slp/plus
+Smart Label Printer EZ30	SLP EZ30	slp/ez30
+Smart Label Printer Pro	SLP Pro	slp/pro
+Smart Label Printer 100	SLP 100	slp/100
+Smart Label Printer 120	SLP 120	slp/120
+Smart Label Printer 200	SLP 200	slp/200
+Smart Label Printer 220	SLP 220	slp/220
+Smart Label Printer 240	SLP 240	slp/240
+auto-detect	auto	auto
+.TE
+.IP
+The default is, of course, "auto".
+.IP "-portrait" 10
+Print in portrait orientation. The default is landscape.
+.IP "-s" 10
+Remove leading empty lines from the top of each printed label. The default
+is not to.
+.IP "-x \fInum\fP" 10
+selects the baud-rate-mapping scheme \fInum\fP (see PLATFORM ISSUES).
+Default is no mapping.
+.IP "-version"
+display program version information to standard-error.
+This option suppresses
+all other processing.
+.SH "SIGNALS"
+\fBslap\fP catches hangup,
+interrupt, quit, and terminate signals so that
+the printer can be put into a quiescent state
+if \fBslap\fP is terminated by an
+outside agent (eg: the print-spooling subsystem).
+.LP
+After tidying up,
+\fBslap\fP stops catching the offending signal and sends itself
+the same signal, which (this time) will terminate it,
+giving the impression that the first occurence of the
+signal was not caught. This behaviour is needed to keep some
+print-spooling systems happy.
+.SH "WARNINGS"
+Are printed to the standard-error channel.
+.LP
+.RS
+.nf
+cannot read input file: \fIname\fP
+cannot create temporary file
+printer empty: load labels
+platen open: close lid
+.fi
+.RE
+.SH "ERRORS"
+Fatal errors detected by \fBslap\fP, and the usual corrective actions,
+fall into several categories. All error messages are printed to the
+standard-error channel.
+.LP
+.SS "Media Faults"
+The corrective action for these is self-evident,
+but read the printer manual
+beforehand - pulling the label paper through the printer by hand could
+invalidate your warranty.
+.LP
+.RS
+.nf
+label jammed in printer!
+.fi
+.RE
+.SS "Printer Faults"
+These can usually be fixed by making sure that the printer is connected and
+actually switched on, or by resetting the printer with the power-switch.
+.LP
+.RS
+.nf
+printer not responding to status requests
+printer not responding
+hardware fault
+communication error
+command-protocol error
+timeout waiting for printer to become ready
+timeout waiting for printer to become idle
+.fi
+.RE
+.SS "Serial-Port Configuration Errors"
+Your System Administrator should be able to fix these. Check that your
+serial-ports are configured
+to operate according to the POSIX 1003.1 \fBtermios(@LF)\fP specifications.
+.LP
+.RS
+.nf
+cannot set baud-rate on serial-port: \fIname\fP
+cannot set read-timeout on serial-port: \fIname\fP
+cannot set tty modes on serial-port: \fIname\fP
+.fi
+.RE
+.SS "Permission Errors"
+Caused by a lack of permission to use a particular serial-port device:
+.LP
+.RS
+.nf
+cannot open serial-port: \fIname\fP
+cannot read from serial-port: \fIname\fP
+cannot write to serial-port: \fIname\fP
+.fi
+.RE
+.SS "Physical I/O Faults"
+In some
+cases these can be corrected by verifying that the cabling to the printer is
+not damaged, and by
+resetting the printer with the power-switch.
+.LP
+.RS
+.nf
+read error on \fIfile/port-name\fP
+write error on \fIfile/port-name\fP
+.fi
+.RE
+.SS "Usage Errors"
+These mostly indicate command-line mistakes.
+.LP
+.RS
+.nf
+usage: slap [-b## -c# -f* -l -m* -o* -p* -s -x# -version] [files]
+cannot locate font: \fIname\fP
+invalid printer-model: \fImodel\fP
+invalid media-type: \fItype\fP
+invalid media-size for \fImodel\fP printer: \fIsize\fP
+invalid media-size for \fImodel\fP printer: \fIsize\fP
+font is too tall for selected media-size or orientation
+serial-port \fIname\fP is already in use
+\fIname\fP is not a serial-port
+.fi
+.RE
+.SH OTHER MESSAGES
+Are also printed to the standard-error channel.
+.LP
+.RS
+.nf
+labels loaded
+lid closed
+.fi
+.RE
+.SH RETURNS
+\fBslap\fP returns failure if any of the above error-messages is emitted.
+Otherwise \fBslap\fP returns success.
+.SH SEE ALSO
+\fBlp\fP(1), \fBlpfilter\fP(1m), \fBlpadmin\fP(1m)
+(UNIX System V Reference Manual);
+.LP
+\fBlpr\fP(1), \fBlpd\fP(8), \fBprintcap\fP(5)
+(UNIX BSD 4.2 Reference Manual).
+.SH "VERSION"
+.nf
+slap    2.4.4   09feb2001 MJS
+.fi
+.SH "AVAILABILITY"
+\fBslap\fP can be built on any system conforming to IEEE Std 1003.1-1988
+with Standard C Language Binding
+(ANSI X3.159-1989, hosted program environment).
+.LP
+In practice, this includes:
+.LP
+.RS
+UNIX System V release 3.2 and derivatives
+.br
+UNIX BSD 4.2 and derivatives, if you have an ANSI C compiler and libraries
+.br
+OSF/1
+.br
+Linux (Slackware, Redhat, SLS, Yygdrasil, etc)
+.br
+transIDRIS v3
+.br
+ESIX
+.br
+Coherent
+.br
+etc etc etc
+.RE
+.SH NOTES
+"Smart Label Printer" is a registered trademark of Seiko Instruments USA Inc.
+.LP
+.SH "PLATFORM ISSUES"
+Some platforms have a tcdrain() function that does not
+conform to POSIX.1 specifications. This manifests itself as the inability
+to drive the SLP-Pro, SLP-100, SLP-120, SLP-200, SLP-220 and SLP-240
+(printer is always reported as "not reponding").
+On such platforms, you may need to
+set TCDRAIN_MAYBE_BROKEN=1 in the generated makefile.
+.LP
+The SLP-100, SLP-200 and SLP-240 printers only
+work with host serial-ports capable
+of 57600 baud.
+For x86 systems, ancient 8250 UARTs will not do for these
+specific printer models.
+SGI Iris-4D family systems
+will not be able to use these specific printers. See also "Buggy Serial-Port
+Drivers", below.
+.SS "Baud-Rate Mapping"
+Older UNIX systems do not provide a native way for programs to set a
+serial-port to operate at 57600 baud, even if the port hardware itself
+can do it. A few serial-port device-drivers can be configured to map
+requests for a lower speed into a hardware-specific command to set 57600 baud.
+This is known as "baud-rate mapping".
+.LP
+Unfortunately, the actual lower baud-rate to request to get 57600 baud is
+system- and often device-driver-specific, thus
+.B slap
+supports various mapping schemes, selected by the -x# flag:
+.IP "-x2"
+uses "50 baud" as a synonym for 57600 baud. This allows
+use of the SLP-100, SLP-200 and SLP-240
+on the IBM RS/6000 under
+AIX 4.x, if the printer
+is attached to either a 7318 8-port concentrator
+or a 128-port adaptor, and the port has been initialised with the
+command "/usr/lbin/tty/stty-cxma fastbaud tty#".
+.IP "-x3"
+uses "75 baud" as a synonym for 57600 baud. This allows
+use of the SLP-100, SLP-200 and SLP-240 on Sun SPARCstation and SPARCserver
+systems under Solaris 2.1-2.4, if the printer is connected to a Magma 4SP,
+8SP or 16SP SBus card (or one of their SYNC or DMA variants).
+NOTE: baud-rate mapping is not needed for Solaris 2.5 and later releases.
+.SS "Buggy Serial-Port Drivers"
+The Solaris "zs" device-driver for the built-in serial-ports of Sun
+SPARCstation, SPARCserver, Ultra-1 and Ultra-2 systems
+claims to be able to support 57600 baud, but
+actually messes up if you try to set such a speed.
+Thus the
+.B on-board
+serial ports of these systems cannot be used with the SLP-100, SLP-200
+and SLP-240 printers; and
+requires the "-b38400" flag to drive the SLP-120 and SLP-220 printers.
+This applies to all Solaris releases from 2.1 to 8.
+.LP
+Note that this driver bug does not apply to any known SBus add-on
+serial-port card.
+.LP
+.SH BUGS
+If someone is foolish enough to switch the printer off (or unplug the serial
+cable) whilst the printer is actually
+printing, it takes a little while (between 20 and 60 seconds)
+for \fBslap\fP to notice and complain.
+.LP
+There should be a flag to enable "auto-linefeed", to allow text that would
+fall off the side of the label to be printed on the next line down instead. 
+.LP
+The ability to have multiple fonts per label (selected on the fly
+with inline escape-codes)
+is a possible future enhancement.
+.LP
+Automatic vertical-centering of text on the label is another possible
+future enhancement.
+.LP
+The ability to use fully scalable PostScript or TrueType fonts (instead of
+bitmap fonts in a custom format) would be handy - watch this space...
+

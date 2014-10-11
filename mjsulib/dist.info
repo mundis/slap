@@ -1,0 +1,15 @@
+pkgname="mjsulib"			# should be lower-case
+desc="MJS Portable C Utility Library"	# one line only
+
+major="3"
+minor="3"
+micro=""
+dated="17jun2012"
+
+author="MJS"				# initials of author/org
+					# (used as prefix of SVR4
+					# package name)
+
+emailaddr="spooferman@excite.com"	# the package maintainer
+
+formats="tar zip"			# for source distribution

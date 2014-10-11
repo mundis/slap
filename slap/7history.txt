@@ -1,0 +1,336 @@
+v2.4.4 09feb01 MJS	The baud-rate mapping capability introduced in 2.4.3
+			had broken the -b## flag. Fixed.
+
+			Adjusted spooler interface scripts to document
+			and allow setting of baud-rate mapping when needed.
+
+			Fixed up some comments in slpro.c that were a bit
+			out of date (ie: did not accurately describe the
+			newer supported models).
+
+			Tidied up the HOWTOs.
+
+v2.4.3 30jan01 MJS	NOTE: only released to one user, for platform testing
+			and for proof-of-concept regarding baud-rate mapping.
+
+			Use of 57600 baud facilities in slpro.c was
+			not *completely* conditional, preventing compilation
+			on Irix 5.3 and AIX 4.1. Fixed: 57600 baud facility
+			is only enabled on platforms where it is available.
+
+			Fixed bug in "printer-reset" code in slpro.c. This
+			bug could only be triggered in extremely unusual
+			error-situations, and was never reported from the
+			field.
+
+			Added support for those serial-port drivers that can
+			provide 57600 baud facilities *only* by pretending
+			that request for a lower speed is really one for 57600
+			baud, eg: when a program uses termios B50, the O/S port
+			driver sets 57600 baud.
+
+			The two initial baud-rate mapping schemes are:
+
+				IBM RS/6000, AIX 4.x, 7318 8-port concentrator
+				or 128-port adaptor, port initialised with
+				"/usr/lbin/tty/stty-cxma fastbaud tty#".
+				Thanks to Tren Blackburn for testing this.
+
+				Solaris/SPARC 2.1-2.4, Magma 4SP, 8SP or 16SP
+				SBus serial-port card. The magma driver for
+				Solaris 2.5 and later supports 57600 baud
+				using the normal mechanism.
+
+			Expect more mapping-schemes for other old
+			operating-systems/device-drivers.
+
+			Fixed a termios/protocol race-condition in slplus.c.
+			The bug only shows up on platforms that have a broken
+			tcdrain() function, when running on *fast* machines,
+			eg: Linux on 600+ MHz PCs, thus was previously hidden.
+			The fix was designed and contributed by Werner Panocha,
+			who claimed not to be a UNIX programmer... which is
+			remarkable considering the subtle termios nature of
+			the fix!
+
+			Added HOWTOs describing how to use other fonts and
+			how to print barcode labels.
+
+
+v2.4.2 19sep00 MJS	Promoted conditional alpha-test code for 240
+			to "production" status.
+
+			Minor corrections to manpage.
+
+			Rationalised internal full-printer-model names,
+			as used by the "output to bitmap" debugging
+			device-driver.
+
+
+v2.4.1 25aug00 MJS	Suppress termios BRKINT semantics during autodetection
+			in each driver, to prevent the probes generating
+			spurious interrupt signals on a very few hardware
+			configurations.
+
+			This made autodetection of printer-type unreliable
+			on those very few systems: had to specify printer-type
+			explicitly.
+
+			Sun Ultra-10 and SPARCstation-20 exibit this behaviour,
+			but the Sun SPARCclassic, SPARCstation-5, Ultra-1/170E,
+			and all the PCs I can find do not.
+
+			It sure is not a UART, driver or cabling issue
+			(identical UARTs, drivers and cables can behave
+			differently). Presume it must be a
+			difference in pull-up/pull-down resistors external
+			to the UART... except that there is a timing issue
+			(problem disappears when run under truss with all
+			truss-output disabled). Strange.
+
+			Verified that there were no memory-leaks or
+			memory-access-errors, just in case.
+
+			In any case, the fix applied is generic - apppropriate
+			for all situations and systems.
+
+v2.4 17aug00 MJS	Added support for new printer models:
+
+				SLP-100
+				SLP-100N
+				SLP-200
+				SLP-200N
+
+			Added alpha-testing support for SLP-240.
+
+			Note that these new printers default to 57600 baud,
+			which means they can *only* be used on systems that
+			provide the common B57600 and CRTSCTS extensions to
+			POSIX.1 termios.
+			
+			The Solaris 2.x and Linux 2.x.x POSIX.1 APIs have
+			the B57600 and CRTSCTS extensions, but I am not sure
+			about others (HP-UX, AIX, etc).
+
+			So we emit an error message if the user explicitly
+			selects one of those models on systems where B57600
+			or CRTSCTS is not available. In auto-probing mode
+			such printers will simply not be detected.
+
+			Note that these newer printers also require that
+			the *system* serial-port hardware properly supports
+			57600 baud... users of pre-Ultra Sun sytems
+			will have to check their on-board serial-ports
+			for the famous Zilog 8530 and Solaris "zs" driver bug,
+			as documented in the manpage.
+
+			Fixed typo's in some comments in slpro.c
+
+v2.3.2 05apr00 MJS	Fixed crash if output-port not specified - now (again)
+			correctly uses standard-output in that case.
+
+			Added time-limited "wait_for_idle()" call to the
+			"set_baud()" funtions in the printer-drivers, to
+			improve reliability of auto-probing. Heavily
+			tested autoprobing on reference platforms.
+
+			Changed the style of structure type definitions in
+			slap.h, to make debugging with gdb easier -
+			seperate "struct" and "typedef" declarartions.
+
+			Fixed invisible file-descriptor and signal-mask leaks
+			in opentty() - the leaks will never arise in slap,
+			but needed fixing for other serial-port programs that
+			"borrow" port.c.
+
+v2.3.1 30jan00 MJS	Fixed incorrect type of return expression at
+			slpro.c:1174 - some compilers complained.
+
+v2.3 23jan00 MJS	Fixed bug where glyphs with maximal extents did
+			not print on the first line of the label. This bug
+			only effected (some) third-party barcode fonts.
+			It still amazes me that several users have generated
+			their own fonts using the included font utilities,
+			as well as reconfiguring an X font server to allow
+			them to do it, both steps being undocumented...
+
+			Portrait versus landscape output now selectable from
+			the command-line. This required some generalisation
+			of the renderer.
+
+			Fixed definition of "35mm slide" label size/orientation,
+			but am unable to test it myself - cannot source this
+			type of label :(.
+
+			Code review exposed an unlikely but potential
+			timeout-whilst-waiting-for-ready bug in the SLP Plus
+			family driver. Fixed.
+
+			Restructured the (internal) device-driver interface,
+			for the above fixes and to allow "hybrid" device-
+			drivers, such as a driver that outputs an MBM-format
+			bitmap file (great for debugging the renderer).
+
+			The above also involved separating the driver-name
+			table from the top-level session-handling code:
+			new module glue.c defines the driver-name mapping
+			internally, and exports a lookup function for
+			other modules to use.
+
+			Removed the somewhat ad-hoc debugging "dump" code
+			from the renderer - now can use the MBM-driver 
+			instead.
+
+			Couple of declarations added to prevent compiler
+			warnings.
+
+			Expanded instructions for using slap with the LPRng
+			spooler, and tidied up the instructions for the BSD
+			spooler. Thanks to gregbo@delanet.com for these.
+
+			Manpage had omitted "Shipping Labels" from the
+			list of valid label sizes. Fixed.
+
+v2.2.6	10sep99 MJS	More generalised configure scripts. Now
+			handles newer Linuxes (based on 1.2.x kernels)
+			without manual intervention.
+
+			Configure scripts now also produce explicit
+			instructions when they detect that manual
+			intervention may be required.
+
+			The -version flag now also displays the
+			platform-specific configured options used to build
+			the executable. This is mainly to help spot
+			broken platforms in future. Manpage updated as per.
+
+v2.2.5	10aug99 MJS	Documentation change only: "lpd" spooler-setup guide
+			changed to specify "input-filter" rather than
+			an "output-filter" to avoid spooler bugs and
+			discrepancies between different versions of "lpd".
+
+v2.2.4	27apr99 MJS	Fixed SVR4-style printer-interface script to
+			reference $MAXBAUD and $MEDIA on the slap command-line.
+			Also fixed a couple of minor typos in said script.
+
+			Added SVR3-style printer-interface script.
+
+			Made configuration scripts more flexible to cater
+			for slightly wierd platforms (eg: Irix C compiler).
+
+			Also noticed that POSIX.1 specifies that the
+			symbolic constant PATH_MAX is optional, so changed
+			to use dynamic method - pathconf().
+			Thanks, scerutti@dtsi.com.
+
+v2.2.3	30jan99 MJS	Under Linux, was getting SIGSEGV if standard-output
+			was redirected to the serial-port, due to an erroneous
+			assumption in the "Pro" driver that malloc()-ed heap
+			was initialised to zero. Fixed - thus removing the
+			need to **explicitly** specify the output port in the
+			"lpd" filter script.
+			Fixed font-path in the sample print-filter scripts.
+
+v2.2.2	27jan99 MJS	adjusted Configure script to forcibly set
+			the makefile variable NODRAIN on Linux platforms,
+			because newer releases of GCC fail to define
+			the symbol __linux__, which was used previously
+			to detect broken implementation of tcdrain().
+			Thanks, jerryn@ici.net.
+
+v2.2.1	24jan99 MJS	adjusted manpage: changed references to Seiko
+			Instruments' products to use their "official" names,
+			and added SII registered trademark notice.
+
+			Also disabled DEBUG logic in render.c that was
+			accidentally enabled in the 2.2 release. Whoops.
+
+v2.2	10jul98	MJS	major restructuring of driver interface to allow easy
+			"plug-in" of drivers for new printer models.
+
+			added support for SmartLabel-120 and SmartLabel-220
+			(surprise, surprise!). Found the bugs in the SLP-120
+			firmware and worked round them!
+
+			added "auto-detect" of printer type (new driver
+			code, and new session-framework code).
+
+			more label sizes:	small, strip, slide,
+						cass, leitz, large.
+
+			tested on additional platforms:
+
+				Sun SPARCclassic		Solaris 2.2
+					(with all the ldterm/zs patches!)
+				Axil HWS-210 (SS2 clone)	Solaris 2.5
+				Sun Enterprise-6000		Solaris 2.5.1
+				Sun Enterprise-150		Solaris 2.5
+				Sun Ultra-2/1200		Solaris 2.5.1
+				Sun Ultra-1/170			Solaris 2.5
+				SPARCstation-5			Solaris 2.6
+
+			That's enough - only significantly different test
+			platforms listed from now on...
+
+			fixed bug in the sample "lp" printer-interface script,
+			to gain more accurate reporting of status by "lpstat".
+
+			enhanced supporting font-import tools to handle glyphs
+			that (intentionally) exceed their font-metrics.
+			Also fixed a couple of minor bugs in the tools.
+			Distributed font files unchanged.
+
+...	  jan98	MJS	tested with network-based "shared virtual serial-port"
+			subsystem (Central Data EtherLite port server) on
+			Solaris, to verify that high-latency serial links
+			did not break anything. Works fine.
+
+
+v2.1	30jun97	MJS	improved recovery from signals - properly closes
+			down communication with printer. This allowed
+			users to cancel a print-job without leaving the
+			printer in a wierd state.
+
+			made driver-interface "session"-based and reentrant
+			for future use (eg: program that needs two drivers
+			active simultaneously, such as an X window driver
+			and a printer driver).
+
+			optimised the use of the printers' communication
+			protocols for faster printing.
+
+			adjusted rendering-engine to properly handle glyphs
+			that extend outside their bounding-box.
+
+v2.0	15may97	MJS	initial version - starts at 2.0 to distinguish
+			from earlier (1994) program, "slpd".
+
+			wrote tools to convert Type 1 PostScript
+			outline fonts into bitmap fonts. Used to
+			generate the distributed bitmap fonts.
+
+			source APIs:	ANSI C		(ANSI X3.159-1989)
+					POSIX.1		(IEEE Std 1003.1-1988)
+					MJS Portable C Library
+
+			printers:	SmartLabel, SmartLabel-Plus,
+					SmartLabel-EZ30, SmartLabel-Pro.
+
+			label sizes:	std, euro, disk, ship.
+
+			tested platforms:
+
+				Sun SPARCclassic	Solaris 2.4
+					(via built-in ports and an
+					8-port Magma/8sp SBus card)
+				Sun SPARCstation-5	Solaris 2.4
+				Sun SPARCserver-10	Solaris 2.4
+				Sun Ultra-1/140		Solaris 2.5.1
+				386 PC (8250 UART)	Slackware Linux 3.0
+				486 PC (16450 UART)	RedHat Linux 4.0
+				486 PC (16550 UART)	RedHat Linux 4.0
+
+			wrote sample printer-interface scripts for integration
+			with the UNIX SVR4 "lp" subsystem, and the BSD
+			"lpd" spooler.
+

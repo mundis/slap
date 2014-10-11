@@ -1,0 +1,7 @@
+#!/bin/sh
+# spit a notice message to stderr if the environment-variable CONF_DEBUG is set.
+# Arguments are the message.
+# Deliberately always returns success, even if it fails.
+#
+test -n "$CONF_DEBUG" && test -n "$1" && echo ":: $@" 1>&2
+exit 0

@@ -1,0 +1,205 @@
+'\" t
+.\" MJS Portable C Library
+.\" Module: quick-reference manual-page for getflags()
+.\"
+.\" Copyright (c) 1991 Mike Spooner
+.\"----------------------------------------------------------------------
+.\" This program is free software; you can redistribute it and/or modify
+.\" it under the terms of the GNU General Public License as published by
+.\" the Free Software Foundation; either version 2 of the License, or
+.\" (at your option) any later version.
+.\"
+.\" This program is distributed in the hope that it will be useful,
+.\" but WITHOUT ANY WARRANTY; without even the implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+.\" GNU General Public License for more details.
+.\"
+.\" You should have received a copy of the GNU General Public License
+.\" along with this program; if not, write to the Free Software
+.\" Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+.\"----------------------------------------------------------------------
+.TD
+.TH getflags @LF 21nov91 "MJSulib"
+.SH NAME
+getflags \- collect flag arguments from command-line
+.SH SYNOPSIS
+#include "mjsu.h"
+
+CHAR *getflags(INT *pac, CHAR ***pav, CHAR *fmt, CHAR *usagetail, \|.\|.\|.\|);
+.SH DESCRIPTION
+\fBgetflags()\fP sets variables
+(pointed-to by the arguments \fI\|.\|.\|.\|\fP)
+from the flags in
+the command-line passed to the process 
+(represented by \fI*pac\fP and \fI*pav\fP),
+according to the specifications of the format string \fIfmt\fP.
+.LP
+\fIusagetail\fP is either NULL or a text-string used to construct a
+fatal error-message, see RETURNS.
+.LP
+The command-line is given by the array of strings \fI*pav\fP;
+The number of strings in the array is given by \fI*pac\fP.
+It is assumed that the first string is the process name, and is to be skipped.
+Each succeeding string is taken to represent one or more flags if it begins
+with '-' and is not the string "-" or "--". Processing of flags stops when
+the first non-flag string is encountered.
+.LP
+\fBgetflags()\fP updates \fI*pac\fP and \fI*pav\fP to reflect the
+consumption of recognised flags. The string "--" is a flag terminator which is
+consumed,
+whereas the string "-" is assumed to be a potential filename
+argument and is thus
+.UL
+not
+consumed.
+.LP
+\fIfmt\fP is a sequence of flag-descriptors, each of which describes
+how to interpret a flag. The order of the flag variables in \fI\|.\|.\|.\|\fP must
+match the order of flag-descriptors in \fIfmt\fP.
+.LP
+Each flag-descriptor consists of a sequence of alphabetic 
+flag-name characters, optionally followed by a
+type-indicator, terminated by a ',' or the end of the format string.
+.LP
+For each of the strings at \fI*pav\fP, the descriptors are tested in sequence 
+until a matching flag-name is encountered or the end of the format-string is
+encountered. When a match is found, if the flag does not require a value, the
+remainder of the string is scanned for further flag-names; otherwise
+the remainder of the string, if any, or all
+of the next string, is taken as the flag's "value"
+and is interpreted as specified
+by the type-indicator.
+.LP
+The type-indicators are:
+.IP \fB"#"\fP
+the value is interpreted as a number and is converted to a
+\fBSHORT\fP. The value is interpreted as decimal if it does not
+start with "0", as heximadecimal if it starts with "0x" or "0X", or as
+octal otherwise.
+The corresponding argument is taken to be the address of a \fBSHORT\fP, 
+which is set to the
+result of the conversion. 
+.IP \fB"##"\fP
+is treated the same as '#', except that the value is converted to a \fBLONG\fP,
+and the corresponding argument is assumed
+to be the address of a \fBLONG\fP instead.
+.IP \fB"*"\fP
+the value is not specially interpreted.
+The corresponding argument
+is taken as the address of a pointer to \fBCHAR\fP, which is 
+set to point at the value string.
+.IP \fB""\fP
+a null type-indicator precludes a value. The corresponding argument
+is taken to be the address of a \fBBOOL\fP, which is set to YES.
+.IP \fB"#^"\fP
+.IP \fB"##^"\fP
+.IP \fB"*^"\fP
+are similar to "#", "##" and "*" respectively,
+except that the corresponding argument is taken to be the
+address of a structure in the form:
+.nf
+
+	struct
+		{
+		UTINY maxnum;
+		UTINY num;
+		\fITYPE\fP val[255];
+		};
+
+.fi
+where \fITYPE\fP is either \fBSHORT\fP, \fBLONG\fP or 
+pointer to \fBCHAR\fP, as
+appropriate. If (\fInum\fP < \fImaxnum\fP),
+the value is delivered to \fIval[num]\fP and \fInum\fP is
+incremented. Otherwise an error is indicated. 
+This allows multiple instances
+of a flag, each with possibly distinct values, to be remembered.
+.ul
+Note:
+the \fInum\fP and \fImaxnum\fP members of
+the structure must be set properly
+.ul
+before
+the call to \fBgetflags()\fP.
+.LP
+An error is indicated if no "value" is present when one is expected,
+and vice versa.
+An error is also indicated if a command-line string starts with '-' but is not 
+the name of a flag as specified in the format string.
+.LP
+.ul
+Note:
+The above specifications impose a constraint on how flag-descriptors are
+ordered in the format string. Any flag whose name is a prefix of the name of
+another flag must appear in the format string after the longer one. This also
+implies that unnamed flags such as "-#" or "-*" must be given last.
+.SH RETURNS
+In all cases, \fBgetflags()\fP
+updates \fI*pac\fP and \fI*pav\fP to reflect the number
+of command-line arguments successfully consumed.
+If all command-line flags are valid, \fBgetflags()\fP returns NULL.
+Otherwise, if \fIusagetail\fP is NULL, \fBgetflags()\fP returns a
+pointer to the offending command-line flag.
+Otherwise, \fBgetflags()\fP emits a "usage" message and
+aborts the calling process by making the call:
+.nf
+
+	exit(EXIT_FAILURE);
+
+.fi
+The usage message is of the form:
+.nf
+
+	usage: \fIprocess-name\fP [\fIflags\fP] \fIusagetail\fP
+
+.fi
+where \fIflags\fP is a list of the valid flags.
+Conventionally, \fIusagetail\fP is a string describing
+any non-flag arguments the program accepts, eg: "text-files".
+.SH EXAMPLE
+All the above may seem terribly complicated, but the following example
+shows how simple it is to use \fBgetflags()\fP...
+.LP
+To accept the command-line:
+.nf
+
+	myprog -f filename -s -check -b512 file1 file2 file3
+
+.fi
+one might write:
+.nf
+	
+	BOOL silent = NO;
+	BOOL checking = NO;
+	CHAR *fname = "default";
+	LONG biasval = 256L; 
+	
+	INT do_file(char *, char *, long);
+	
+	INT main(UINT ac, CHAR **av)
+		{
+		INT ok;
+
+		getflags(&ac, &av, "b##,check,f*,s", "object-files",
+			&biasval, &checking, &fname, &silent);
+
+		for ( ; ac && *av; --ac, ++av)
+			ok += do_file(*av, fname, biasval);
+
+		exit ((checking && !ok) ? EXIT_FAILURE : EXIT_SUCCESS);
+		}
+
+.fi
+In this case, an unrecognised command-line flag would provoke the
+following fatal error message:
+.nf
+
+	usage: myprog [-b## -check -f* -s] object-files
+
+.fi
+.SH SEE ALSO
+\fBerror(@LF)\fP, \fBremark(@LF)\fP, \fBwarning(@LF)\fP,
+\fBmjsu(@MI)\fP.
+.SH AVAILABILITY
+\fBgetflags()\fP
+is written in C, conforming to ANSI X3.159-1989 (hosted program environment).

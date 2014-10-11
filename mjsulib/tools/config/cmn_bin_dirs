@@ -1,0 +1,64 @@
+#!/bin/sh
+# Internal include-file helper for 'Configure' modules:
+# define useful places to look for modules that need to determine the
+# **absolute** pathname for external commands on the system.
+#
+# Should not be referenced in config.in, rather should be .-included by those
+# Configure modules need it.
+#
+
+if test -z "$CONF_BINS_PROBED" ; then
+
+	# *common* user-level CLI commands:
+	CONF_STDBINS=''
+	for d in /usr '' /usr/xpg[0-9]* /usr/ccs \
+			/usr/sfw /opt/sfw \
+			/usr/openwin /usr/X /usr/X11* /usr/dt /usr/openwin/sfw \
+			/usr/local /opt/local ; do
+		if test -d "$d"/bin ; then
+			test -n "$CONF_STDBINS" && CONF_STDBINS="$CONF_STDBINS:"
+			CONF_STDBINS="${CONF_STDBINS}$d/bin"
+		fi
+	done
+	setvar.___ CONF_STDBINS "$CONF_STDBINS"
+
+	# *basic*, *common* system-administrator-level commands:
+	CONF_SYSBINS=''
+	for d in /usr '' /usr/sfw /opt/sfw ; do
+		if test -d "$d"/sbin ; then
+			test -n "$CONF_SYSBINS" && CONF_SYSBINS="$CONF_SYSBINS:"
+			CONF_SYSBINS="${CONF_SYSBINS}$d/sbin"
+		fi
+	done
+	for d in /usr/etc /etc ; do
+		if test -d "$d" ; then
+			test -n "$CONF_SYSBINS" && CONF_SYSBINS="$CONF_SYSBINS:"
+			CONF_SYSBINS="${CONF_SYSBINS}$d"
+		fi
+	done
+	exec 9>&2 2>/dev/null
+	for x in -i -p -m ; do  # in order of preference
+		if uname $x >/dev/null ; then
+			d="/usr/platform/`uname $x`/sbin" && test -d "$d"
+			if test -d "$d" ; then
+				test -n "$CONF_SYSBINS" && CONF_SYSBINS="$CONF_SYSBINS:"
+				CONF_SYSBINS="${CONF_SYSBINS}$d"
+			fi
+		fi
+	done
+	exec 2>&9
+	setvar.___ CONF_SYSBINS "$CONF_SYSBINS"
+
+	# least-preferred: system-provided 'universe compatibility' commands;
+	# eg: the old "att" versus "bsd" universe logic on DYNIX 3 et al, and
+	# the SunOS 4 SCP commands on SunOS 5, etc, etc:
+	for d in /usr/5bin /usr/att/bin /usr/ucb ; do
+		if test -d "$d" ; then
+			test -n "$CONF_SCPBINS" && CONF_SCPBINS="$CONF_SCPBINS:"
+			CONF_SCPBINS="${CONF_SCPBINS}$d"
+		fi
+	done
+	setvar.___ CONF_SCPBINS "$CONF_SCPBINS"
+
+	setvar.___ CONF_BINS_PROBED 0
+fi

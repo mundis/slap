@@ -1,0 +1,115 @@
+<html>
+<head>
+</head>
+<body>
+<h1>The <i>slap</i> FAQ</h1>
+
+<h5>Author: Mike Spooner</h5>
+<h5>Version 0.1: September 1999</h5>
+<p>
+<i>This is only a very early draft</i>
+
+<p><hr><p>
+
+<h2>1) Introduction</h2>
+
+<h4>1.1) What is <i>slap</i>?</h4>
+slap is a UNIX command-line program for printing stick-on textual labels
+using a Seiko Instruments' Smart Label Printer.
+<p>
+It can print in several typefaces and point-sizes.
+
+<h4>1.2) What is a Smart Label Printer?</h4>
+See
+<a href="http://www.seikosmart.com/products/slp.htm">
+http://www.seikosmart.com/products/slp.htm</a>.
+
+<h4>1.3) Do Seiko Instruments provide driver software for these printers?</h4>
+Yes, but only for Macintosh or Microsoft Windows (95, 98, NT, 2000, etc).
+For UNIX systems, you need slap.
+
+<h4>1.4) How about an interactive WYSIWYG version?</h4>
+An X11/Motif version is under development [sep99].
+An X11/XView version is also planned.
+
+<h4>1.5) Which printer models are supported?</h4>
+At the time of writing, every SLP model ever, ie:
+<p>
+<ul>
+<li>Smart Label Printer</li>
+<li>Smart Label Printer Plus</li>
+<li>Smart Label Printer EZ30</li>
+<li>Smart Label Printer Pro</li>
+<li>Smart Label Printer 120</li>
+<li>Smart Label Printer 220</li>
+</ul>
+
+<h4>1.2) Which size labels are supported?</h4>
+All the standard Seiko label sizes (at the time of writing), ie:
+<p>
+<table><tr><td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td><td>
+<table>
+<tr><th align=left>Name</th><th>Size in mm</th></tr>
+<tr><td>address</td><td align=center>28 x 89</td></tr>
+<tr><td>large address</td><td align=center>28 x 89</td></tr>
+<tr><td>euro address</td><td align=center>36 x 89</td></tr>
+<tr><td>diskette</td><td align=center>54 x 70</td></tr>
+<tr><td>shipping</td><td align=center>54 x 101</td></tr>
+<tr><td>file folder</td><td align=center>14 x 87</td></tr>
+<tr><td>large file folder</td><td align=center>14 x 87</td></tr>
+<tr><td>1x2 multipurpose</td><td align=center>28 x 51</td></tr>
+</table>
+</td></tr></table>
+
+<p><hr><p>
+
+<h2>2) Software Build Problems</h2>
+<p>
+
+<h4>2.1) GNU C and Solaris: "parse error before `*'"</h4>
+GNU C 2.8.1 has a configuration bug under Solaris 2.x. As a workround,
+set the following variable in the slap makefile:
+<p>
+<pre>
+	POSIX1_TERMIOS_EXTENSIONS=-D__EXTENSIONS__
+</pre>
+<p>
+GNU C releases prior to 2.8.0 must be reinstalled
+after upgrading Solaris or installing Solaris patches that
+update system header files. Failure to do so can cause
+GNU C to reject some valid C programs, and other troubles too.
+<p>
+Old releases of GNU C (eg: 2.3.3) do not handle the Solaris header
+files very well. The same workround as for GNU C 2.8.1 will
+at least allow you to compile slap.
+
+<p><hr><p>
+
+<h2>3) Miscellaneous Troubleshooting</h2>
+<p>
+
+<h4>3.1) SLP-120 or -220 printer on builtin serial-port of pre-1997 SPARC systems</h4>
+The builtin serial-ports of older Sun SPARC systems cannot run
+asynchronously at 57600 baud, even though the Solaris "zs" driver
+lets applications set such a speed without any error indication
+(this is a Solaris 2.1-2.6 "zs" driver bug).
+<p>
+This causes slap to grind to a halt without actually managing to print
+anything, sometimes accompanied by a few audible "clicks" from the printer.
+<p>
+The workround is to give the -b38400 flag on the slap command-line
+when using an SLP-120 or SLP-220 printer on a builtin serial port.
+<p>
+Note that add-on serial ports (SBus card, SCSI port box, etc),
+and PCI-based SPARC workstations, do not have this problem.
+
+<h4>3.2) SLP-120 or -220 printer misfeeds when loading a new reel of labels</h4>
+These printers need the newer type of labels that have a black
+square printed on the backing paper (they use this to detect top-of-page).
+<p>
+The SLP, SLP Plus, SLP EZ30 and SLP Pro use the holes between each
+label to detect top-of-form, so will work with both old and new types of
+labels.
+
+</body>
+</html>

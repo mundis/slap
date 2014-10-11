@@ -1,0 +1,30 @@
+#!/bin/sh
+# man-to-PostScript processor
+
+# parse flags:
+#
+USAGE="usage: $0 [ <manpage-source-files> ]"
+while getopts :o: FLAG
+do
+	case $FLAG in
+
+	\?)	# unknown flag
+		echo "$USAGE" 1>&2
+		exit 1
+		;;
+	esac
+done
+shift `expr $OPTIND - 1`
+
+if test -f /usr/lib/lp/postscript/dpost && \
+		test -x /usr/lib/lp/postscript/dpost ; then
+	# classic SVR4 troff
+	cat "$@" | soelim | tbl | troff -man | /usr/lib/lp/postscript/dpost
+elif test -f /usr/ucb/dpost && test -x /usr/ucb/dpost ; then
+	# Heirloom troff
+	PATH="$PATH:/usr/ucb"
+	cat "$@" | soelim | tbl | troff -man | dpost
+else
+	# presume GNU roff
+	cat "$@" | groff -t -s -Tps -man
+fi

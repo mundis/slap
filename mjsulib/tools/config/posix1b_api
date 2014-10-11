@@ -1,0 +1,196 @@
+#!/bin/sh
+# @(#)posix1b.api        2.0     17may2009 MJS
+#------------------------------------------------------------------------------
+# 2.0   17may2009 MJS   compatibility with new "soft/hard" Configure mechanism,
+#                       also removal of temp files on interrupt.
+# 1.0   27sep2004 MJS   original version.
+#------------------------------------------------------------------------------
+capi_name=POSIX1b
+capi_desc="POSIX.1b-1993 (realtime)"
+capi_enablers='-D_POSIX_C_SOURCE=199309L'	# API-defined enablers
+capi_indicators='_POSIX_C_SOURCE>=199309L'	# API-defined indicators
+capi_clevels="89 99"
+
+
+# platform-dependant enablers:
+capi_try_cflags=''
+capi_try_ldflags=''
+capi_try_libs='-lposix4:-lrt'
+
+# any other APIs we depend on:
+capi_dep_cflags=''
+capi_dep_ldflags=''
+capi_dep_libs=''
+
+
+#desc: Determine whether the POSIX.1c-1995 API is available, and the
+#desc: C compiler flags needed to enable it if possible.
+#desc:
+#cvar: CONF_${capi_name}_CFLAGS/_LDFLAGS/_LIBS
+
+#out: relevant "makefile" variable-definitions.
+
+eval status='$CONF_'"${capi_name}"'_PROBED'
+test -n "$status" && exit "$status"
+. mod.start
+
+
+# build a small ANSI C source file that uses an exclusive combination of
+# POSIX.1b facilities.
+#
+cat > /tmp/$$.c << EOT
+#include <unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <errno.h>
+#include <signal.h>
+#include <sched.h>
+#include <aio.h>
+#include <mqueue.h>
+
+static void aio_handler(int sig, siginfo_t *siginfo, void *cntxt)
+	{
+	int e;
+	struct aiocb *aiocb;
+
+	aiocb = siginfo->si_value.sival_ptr;
+	e = aio_error(aiocb);
+	if (!e)
+		{
+		/* no error, reap status */
+		aio_return(aiocb);
+		}
+	else if (e != EINPROGRESS)
+		{
+		/* error occurred, reap status */
+		aio_return(aiocb);
+		}
+	/* else still in progress... */
+	}
+
+static char *qname = NULL;
+
+void interrupted(int sig, siginfo_t *siginfo, void *cntxt)
+	{
+	if (qname)
+		mq_unlink(qname);
+	exit(3);
+	}
+
+
+int main(unsigned int ac, char **av)
+	{
+	struct sigaction sa;
+	struct aiocb aiocb;
+	clockid_t clk;
+	struct timespec ts;
+	mqd_t mq;
+	struct mq_attr ma;
+	char ch;
+
+	sa.sa_sigaction = aio_handler;
+	sa.sa_flags = SA_SIGINFO;
+	sigemptyset(&sa.sa_mask);
+	sigaction(SIGRTMIN, &sa, NULL);
+	aiocb.aio_sigevent.sigev_notify = SIGEV_SIGNAL;
+	aiocb.aio_sigevent.sigev_signo = SIGRTMIN;
+	aiocb.aio_sigevent.sigev_value.sival_ptr = &aiocb;
+	aiocb.aio_fildes = STDOUT_FILENO;
+	aiocb.aio_nbytes = 0;
+	aiocb.aio_buf = malloc(aiocb.aio_nbytes + 1);
+	aiocb.aio_offset = 0;
+	errno = 0;
+	if ((aio_read(&aiocb) < 0) && (errno == ENOSYS))
+		return (EXIT_FAILURE);
+
+	errno = 0;
+	if ((sched_getscheduler(0) < 0) && (errno == ENOSYS))
+		return (EXIT_FAILURE);
+
+	errno = 0;
+	if ((fdatasync(STDIN_FILENO) < 0) && (errno == ENOSYS))
+		return (EXIT_FAILURE);
+
+	errno = 0;
+	if ((clock_getres(CLOCK_REALTIME, &ts) < 0) &&
+			((errno == ENOSYS) || (errno == EINVAL)))
+		return (EXIT_FAILURE);
+
+	#if _POSIX_C_SOURCE >= 200112L
+	errno = 0;
+	if ((clock_nanosleep(CLOCK_REALTIME, 0, &ts, NULL) < 0) &&
+			((errno == ENOSYS) || (errno == EINVAL)))
+		return (EXIT_FAILURE);
+	#endif
+
+	sa.sa_handler = interrupted;
+	sa.sa_flags = 0;
+	sigemptyset(&sa.sa_mask);
+	sigaddset(&sa.sa_mask, SIGHUP);
+	sigaddset(&sa.sa_mask, SIGINT);
+	sigaddset(&sa.sa_mask, SIGQUIT);
+	sigaddset(&sa.sa_mask, SIGPIPE);
+	sigaddset(&sa.sa_mask, SIGABRT);
+	sigaddset(&sa.sa_mask, SIGTERM);
+	sigaction(SIGHUP, &sa, NULL);
+	sigaction(SIGINT, &sa, NULL);
+	sigaction(SIGQUIT, &sa, NULL);
+	sigaction(SIGPIPE, &sa, NULL);
+	sigaction(SIGABRT, &sa, NULL);
+	sigaction(SIGTERM, &sa, NULL);
+ 
+	qname = "/@posix.1b#+_!";
+	mq_unlink(qname);
+	errno = 0;
+	ma.mq_maxmsg = 1;
+	ma.mq_msgsize = 1;
+	mq = mq_open(qname, O_RDWR|O_CREAT|O_NONBLOCK|O_EXCL, 0600, &ma);
+	/* awful cast required by POSIX.1b, what a nasty API! */
+	if ((mq < (mqd_t) 0) && ((errno == ENOSYS) || (errno == EINVAL)))
+		return (EXIT_FAILURE);
+	
+	errno = 0;
+	if ((mq_send(mq, "#", 1, 0) < 0) &&
+			(errno != EAGAIN) && (errno != EINVAL))
+		{	
+		mq_close(mq);
+		mq_unlink(qname);
+		return (EXIT_FAILURE);
+		}
+
+	errno = 0;
+	ch = '@';
+	if ((mq_receive(mq, &ch, 1, NULL) < 0) &&
+			(errno != EAGAIN) && (errno != EINVAL))
+		{       
+                mq_close(mq);
+		mq_unlink(qname);
+                return (EXIT_FAILURE);
+                }
+	mq_close(mq);
+	mq_unlink(qname);
+	if (ch != '#')
+		return (EXIT_FAILURE);
+	mq_unlink(qname);
+		
+	#if 0
+	shm_open();
+	shm_ulink();
+
+	sem_open();
+	sem_init();
+	sem_destroy();
+	sem_unlink();
+	sem_timedwait();
+
+	timer_create();
+	timer_gettime();
+	timer_getoverrun();
+	timer_delete();
+	#endif
+
+	return (EXIT_SUCCESS);
+	}
+EOT
+
+. mod.capisearch

@@ -1,0 +1,89 @@
+#!/bin/sh
+# @(#)tcdrain.bug	3.0	27jun2009 MJS
+#------------------------------------------------------------------------------
+# 3.0	27jun2009 MJS	compatibility with new "soft/hard" Configure mechanism,
+#			also removal of temp files on interrupt.
+# 2.0	27sep2004 MJS	revised to be usable as a Configure-callable module.
+# 1.0	15aug1998 MJS	original version.
+#------------------------------------------------------------------------------
+#
+#desc: Determine whether tcdrain() on the local system complies with POSIX.1
+#desc: specifications, or whether it may be buggy.
+#desc:
+#cvar: CONF_TCDRAIN_CFLAGS
+
+#out: relevant "makefile" variable-definitions.
+
+
+eval status='$CONF_TCDRAIN_CFLAGS_PROBED'
+test -n "$status" && exit "$status"
+. mod.start
+
+
+############################################################################
+#########	 module-specific '-configure' actions	  ############
+############################################################################
+
+
+# It is impractical to test this with runtime probes, so we
+# have to resort to selection based on system identification:
+#
+case `uname -s -r 2>/dev/null` in
+
+SunOS?5.*)
+	status=0
+	;;
+Linux*|Irix?5.*|*)
+	status=1
+	;;
+esac
+
+if test "$status" -ne 0 ; then
+	CONF_TCDRAIN_CFLAGS='-DTCDRAIN_BROKEN'
+else
+	CONF_TCDRAIN_CFLAGS=''
+fi
+
+# emit makefile-segment to stdout:
+#
+cat <<EOT
+
+# Several platforms are known to provide a broken implementation of "tcdrain()".
+# POSIX 1003.1 mandates that tcdrain() must not return until all queued
+# output (at the time of the call) has been physically transmitted.
+# However, under Linux, Irix 5.x, et al, tcdrain() merely initiates the
+# transmission and returns before the transmission has actually completed.
+# Note that such platforms usually also show the same bug when using
+# the alternative tcsetattr(..., TCSADRAIN, ...);
+#
+# If your platform has this fault, or you are not sure, define
+# TCDRAIN_CFLAGS to define the C symbol TCDRAIN_BROKEN.
+#
+# Applications that need to identify whether tcdrain() and TCSADRAIN are broken
+# should use eg:
+#
+#	tcdrain(...);
+#	#if defined(TCDRAIN_BROKEN)
+#	sleep(2);	/* sic */
+#	#endif
+#	
+# especially before any attempt to change output baud-rate/parity/framing via
+# tcsetattr().
+#
+TCDRAIN_CFLAGS=$CONF_TCDRAIN_CFLAGS
+
+EOT
+
+# set 'Configure' variables:
+#
+setvar.___ CONF_TCDRAIN_CFLAGS		"$CONF_TCDRAIN_CFLAGS"
+setvar.___ CONF_TCDRAIN_CFLAGS_PROBED	"$status"
+
+
+# and report findings:
+#
+msg="probably"
+test "$status" -eq 0 && msg="no"
+echo "is tcdrain() broken on this system?: $msg" 1>&2
+
+exit "$status"

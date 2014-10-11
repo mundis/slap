@@ -1,0 +1,17 @@
+Begin3
+Title:		MJSulib
+Version:	3.3
+Entered-date:   17jun2012
+Description:	MJSulib is a small library of portable general-purpose
+		utility functions, including an extremely flexible and
+		programmer-friendly command-line option-parser.
+Keywords:	C, utility, library function
+Author: 	spooferman@excite.com (Mike Spooner)
+Maintained-by:	spooferman@excite.com (Mike Spooner)
+Primary-site:	http://uutil.tripod.com/mjsulib/
+		193 Kb mjsulib3r3.tar
+		94 Kb mjsulib3r3.zip
+Original-site:	
+Platforms:	any - fully portable ANSI C89
+Copying-policy:	GPL
+End

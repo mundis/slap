@@ -1,0 +1,92 @@
+#!/bin/sh
+# @(#)curses.api	1.0	17may2009 MJS
+#------------------------------------------------------------------------------
+# 1.0	17may2009 MJS	original version.
+#------------------------------------------------------------------------------
+capi_name=CURSES
+capi_desc="curses"
+capi_enablers=''		# API enablers
+capi_indicators=''		# API-defined indicators
+capi_clevels="89 89X 99"
+
+
+# any additional or platform-specific extra C-compiler flags we may require:
+capi_try_cflags=""
+capi_try_ldflags=''
+capi_try_libs='-lcurses'
+
+# any other APIs we depend on:
+capi_dep_cflags=''
+capi_dep_ldflags=''
+capi_dep_libs=''
+
+#desc: Determine the C-compiler flags needed to get the
+#desc: $capi_desc API (supporting multiple-screens but not necessarily
+#desc: multiple-terminals), if available.
+#desc:
+#desc: If the API is not available, $0 returns failure and
+#desc: the C symbol HAVE_CURSES will be undefined.
+
+#cvar: CONF_${capi_name}_CFLAGS/_LDFLAGS/_LIBS
+
+#out: relevant "makefile" variable-definitions.
+
+
+eval status='$CONF_'"${capi_name}"'_PROBED'
+test -n "$status" && exit "$status"
+. mod.start
+
+
+# build a small curses ANSI C source file
+#
+cat > /tmp/$$.c <<'EOT'
+#include <stdio.h>
+#include <stdlib.h>
+#include <curses.h>
+
+static int inited = 0;
+
+static void stopscreen(void)
+	{
+	if (inited)
+		{
+		clear();
+		refresh();
+		resetty();
+		endwin();
+		}
+	}
+
+WINDOW *w = NULL;
+
+int main(unsigned int ac, char **av)
+	{
+	if (napms(200))
+		{
+		int screenheight, screenwidth, attribs;
+
+		initscr();
+		savetty();		/* record current settings, etc! */
+		inited = 1;
+		atexit(stopscreen);
+		w = stdscr;
+		wattroff(w, A_STANDOUT|A_UNDERLINE|A_REVERSE|A_BLINK|A_DIM|A_BOLD);
+		raw();			/* no input buffering/erasing */
+		meta(stdscr, FALSE);	/* 7-bit low-level char input */
+		keypad(stdscr, TRUE);	/* deliver function-key tokens */
+		curs_set(1);		/* medium-highlight cursor */
+		nonl();
+		noecho();
+		getmaxyx(stdscr, screenheight, screenwidth);
+		clear();
+		move(screenheight-1,screenwidth-1);
+		attribs = A_NORMAL;
+		attrset(attribs);
+		refresh();
+		stopscreen();
+		}
+	return (0);
+	}
+EOT
+
+. mod.capisearch

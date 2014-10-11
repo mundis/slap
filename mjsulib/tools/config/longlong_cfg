@@ -1,0 +1,150 @@
+
+#!/bin/sh
+# @(#)longlong.have	1.0	17may2010 MJS
+#------------------------------------------------------------------------------
+# 1.0	17may2010 MJS	original version.
+#------------------------------------------------------------------------------
+
+#desc: Determine whether C89X fully supports "long long" datatypes.
+#desc:
+#desc: If the API is available, $0 returns success and the C symbol
+#desc: $indicator will be defined.
+
+#cvar: CONF_HAVE_$indicator
+
+#out: relevant C symbol definition, suitable for a "config.h".
+
+
+
+eval status='$CONF_LONGLONG_PROBED'
+# NOTE: this module may need to produce output every time it is called,
+# so cannot "just exit" if already probed...
+if test -z "$status" ; then
+
+	. mod.start
+	
+	# chain c89X:
+	chain.___ /tmp/$$.cv c89X_cmd -configure "$@" && . /tmp/$$.cv </dev/null
+	rm -f /tmp/$$.cv
+	
+	cat > /tmp/$$.c <<'EOT'
+	/* a small ANSI C source file that uses the key "long-long" facilities:
+	 *
+	 *	data-types (decls, return-type, parameter-passing)
+	 *	storage-class modifiers (volatile, const, static)
+	 *	expressions (arithmetic, boolean, bitwise)
+	 *	assignments and assigning-operators, cascading assignments
+	 *	scanf/printf formats
+	 *	varargs processing
+	 *	integral constants
+	 *	integer conversions (esp. re sign-extension)
+	 */
+	#include <stdio.h>
+	#include <stdlib.h>
+	#include <stdarg.h>
+	#include <string.h>
+	#include <assert.h>
+	#include <limits.h>
+	int main(int, char **);
+	
+	static long long sumof(const char *fmt, ...)
+		{
+		static long long twaddle = 0;
+		long long sum;
+		unsigned int i, n;
+		va_list ap;
+	
+		assert(!twaddle);
+		--twaddle;
+		assert(twaddle < 0);
+		va_start(ap, fmt);
+		i = atoi(fmt);
+		for (sum = 0, n = 0; n < i; ++n)
+			sum += va_arg(ap, long long);
+		va_end(ap);
+		twaddle++;
+		return (sum);
+		}
+	
+	int main(int ac, char **av)
+		{
+		char vbuf[1024], ybuf[1024];
+		long v = ~0L;
+		volatile long long x = 0x1FFFFFFFFLL, z = ~0LL;
+		unsigned long long y = ~0ULL;
+		volatile int i = -1;
+	
+		/* scanf/printf formats? */
+		sprintf(vbuf, "%lld", x);
+		sscanf(vbuf, "%lli", &z);
+		if (z != x)
+			return (EXIT_FAILURE + 1);
+	
+		/* sign-extension? */
+		z = 0LL;
+		z = i;
+		if (z >= 0)
+			return (EXIT_FAILURE);
+	
+		/* integer-promotions, arithmetic, increment... */
+		z = 0LL;
+		y = 1ULL;
+		if (sumof("3", x - 13, 7 - y--, ++z + ++y) != (x - 5))
+			return (EXIT_FAILURE);
+		/* boolean evals to 0LL/1LL, bitwise ops */
+		z = !(x == y);
+		if (z & ~1)
+			return (EXIT_FAILURE);
+		z |= 2;
+		if (sumof("1", (z * 5) % (y ^ z)) != 1)
+			return (EXIT_FAILURE);
+	
+		z = y = ~0LL;
+		z += i + y + 1;
+		v = 0L;
+		sprintf(vbuf, "%lld", z);   /* -2 on 2's-complement machines */
+		if (strspn(vbuf, "-+0123456789") != strlen(vbuf))
+			{
+			/* vbuf contains non-digits/signs
+			 * (%lld not understood) */
+			return (EXIT_FAILURE);
+			}
+		sprintf(ybuf, "%+llu", y);
+		if (strspn(ybuf, "-+0123456789") != strlen(ybuf))
+			{
+			/* ybuf contains non-digits/signs
+			 * (%llu not understood) */
+			return (EXIT_FAILURE);
+			}
+		sprintf(vbuf, "%lu", v);
+		if (strlen(ybuf) > strlen(vbuf))
+			{
+			if (ULLONG_MAX > ULONG_MAX)
+				return (!y);
+			}
+		return (EXIT_FAILURE);
+		}
+EOT
+
+	if trycc.___ "$CONF_C89X" "" "" "" /tmp </tmp/$$.c ; then
+		CONF_LONGLONG=yes
+	else
+		CONF_LONGLONG=no
+	fi
+	rm -f /tmp/$$.c
+	echo "long long support in C89X: $CONF_LONGLONG" 1>&2
+fi
+
+setvar.___ CONF_LONGLONG_PROBED 1
+setvar.___ CONF_LONGLONG "$CONF_LONGLONG"
+
+op=undef
+status=1
+test "$CONF_LONGLONG" = yes && op=define && status=0
+echo ""
+echo "/* define HAVE_LONGLONG if we have full support for the 'long long' datatype"
+echo " * otherwise undefine it..."
+echo " */"
+echo "#$op HAVE_LONGLONG"
+
+exit "$status"

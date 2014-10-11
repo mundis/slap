@@ -1,0 +1,104 @@
+#!/bin/sh
+# preroff-to-man processor
+#
+# Maps symbolic manual-section tags into actual section-numbers
+# according to the conventions of the local system.
+#
+# This program uses the bare minimum of shell and external facilities,
+# so that it will work even on ancient (c.1983) UNIX and UNIX-like
+# systems.
+#
+# Not sure about that funky redirection, though.
+#
+##############################################################################
+#
+# Output is to file specifed with -o flag, if any, otherwise to
+# standard-output.
+# Input is from files specified as non-flag command-line arguments,
+# if any, otherwise from standard-input.
+#
+# The following section-numbering schemes are understood:
+#
+#	att	System-III, System-V, etc
+#	bsd	UNIX V7, BSD 2 thru BSD 4, Linux, etc
+#
+# NOTE: this script may need to execute on VERY old UNIXes, so must be
+# a minimalist Bourne-Shell script - use of new-fangled features like
+# "getopts" and shell-functions must be avoided.
+# Most external commands ("cut", "basename", etc) are probably best
+# avoided. However, we can rely on basic "sed" and "eval" being available.
+#
+
+scheme=""
+outfile=""
+
+ME="`echo $0 | sed -e 's|^.*/||'`"
+USAGE="usage: $ME  [ -o output ]  files"
+
+# parse flags:
+#
+while [ "true" = "true" ] ; do
+	case $1 in
+		-o)	shift
+			if [ -z "$1" ] ; then
+				echo "$USAGE" 1>&2
+				exit 1
+			fi
+			outfile="$1"
+			shift
+			;;
+		-o*)	outfile="`echo $1 | sed -e 's/-o//'`"
+			shift
+			;;
+		--)	shift
+			break
+			;;
+		-*)	echo "$USAGE" 1>&2
+			exit 1
+			;;
+		*)	break
+			;;
+	esac
+done
+
+# auto-detect manpage numbering scheme:
+#
+if [ -d /usr/man/man1m ] || [ -d /usr/share/man/man1m ] ; then
+	scheme="att"
+else
+	scheme="bsd"
+fi
+
+# now process input to produce single output file:
+#
+redout="${outfile:+>$outfile}"
+case $scheme in
+	att)
+		eval sed \
+			-e 's/@UC/1/g' \
+			-e 's/@SC/2/g' \
+			-e 's/@LF/3/g' \
+			-e 's/@FF/4/g' \
+			-e 's/@MI/5/g' \
+			-e 's/@GD/6/g' \
+			-e 's/@SF/7/g' \
+			-e 's/@AC/1m/g' \
+			$* ${redout}
+		;;
+	bsd)
+		eval sed \
+			-e "s/@UC/1/g" \
+			-e "s/@SC/2/g" \
+			-e "s/@LF/3/g" \
+			-e "s/@FF/5/g" \
+			-e "s/@MI/7/g" \
+			-e "s/@GD/6/g" \
+			-e "s/@SF/4/g" \
+			-e "s/@AC/8/g" \
+			$* ${redout}
+		;;
+	*)
+		echo "$USAGE" 1>&2
+		exit 1
+		;;
+esac

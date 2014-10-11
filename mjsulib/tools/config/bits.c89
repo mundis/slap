@@ -1,0 +1,13 @@
+configure:2503: checking for C compiler default output file name
+configure:2630: checking for suffix of executables
+configure:2670: checking for suffix of object files
+
+configure:2021: checking whether make sets $(MAKE)
+
+check whether .o files forced in $PWD
+check whether c89 -c -o* work together...
+
+configure:3492: checking for an ANSI C-conforming const
+configure:2935: checking for gcc option to accept ISO C89
+configure:3667: checking for working volatile
+

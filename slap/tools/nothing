@@ -1,0 +1,4 @@
+#!/bin/sh
+# Do nothing, as portably and quietly as possible!
+
+exit 0

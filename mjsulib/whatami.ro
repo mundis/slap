@@ -1,0 +1,54 @@
+'\" t
+.\" MJS Portable C Library
+.\" Module: quick-reference manual-page for whatami()
+.\"
+.\" Copyright (c) 1994 Mike Spooner
+.\"----------------------------------------------------------------------
+.\" This program is free software; you can redistribute it and/or modify
+.\" it under the terms of the GNU General Public License as published by
+.\" the Free Software Foundation; either version 2 of the License, or
+.\" (at your option) any later version.
+.\"
+.\" This program is distributed in the hope that it will be useful,
+.\" but WITHOUT ANY WARRANTY; without even the implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+.\" GNU General Public License for more details.
+.\"
+.\" You should have received a copy of the GNU General Public License
+.\" along with this program; if not, write to the Free Software
+.\" Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+.\"----------------------------------------------------------------------
+.TD
+.TH whatami @LF 14nov94 "MJSulib"
+.SH NAME
+whatami \- return the name of the calling process
+.SH SYNOPSIS
+#include "mjsu.h"
+
+const CHAR *whatami(VOID);
+.SH DESCRIPTION
+\fBwhatami()\fP
+returns the process-name as
+determined by an earlier call to
+\fBgetflags()\fP,
+if any, or the string "?".
+.LP
+The returned string is useful as an identifying prefix for
+diagnostic or log messages.
+.SH RETURNS
+\fBwhatami()\fP
+returns a pointer to the read-only process-name of the caller.
+.SH EXAMPLE
+.nf
+
+	openlog(whatami(), LOG_PID | LOG_CONS, LOG_DAEMON);
+	...
+	syslog(LOG_ERR, "cannot open database: %m");
+
+.fi
+.SH SEE ALSO
+\fBgetflags(@LF)\fP, \fBerror(@LF)\fP, \fBremark(@LF)\fP, \fBwarning(@LF)\fP,
+\fBmjsu(@MI)\fP.
+.SH AVAILABILITY
+\fBwhatami()\fP
+is written in C, conforming to ANSI X3.159-1989 (hosted program environment).

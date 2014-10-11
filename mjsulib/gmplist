@@ -1,0 +1,50 @@
+#!/bin/sh
+
+dofile()
+	{
+	title=""
+	sect=""
+	desc=""
+
+	while read first second third rest ; do
+		if echo "$first" | grep '^.TH$' >/dev/null ; then
+			title="$second"
+			sect="$third"
+			break
+		fi
+	done
+	
+	mode=0
+	while read rest ; do
+		if echo "$rest" | grep '^.SH[ \t][ \t]*[\"]*NAME[\"]*' >/dev/null ; then
+			mode=1
+		elif [ "$mode" -gt 0 ] ; then
+			if echo "$rest" | grep "^.SH" >/dev/null ; then
+				break
+			else
+				for word in $rest ; do
+					if [ "$word" = "-" ] ; then
+						mode=2
+					elif [ "$mode" -eq 2 ] ; then
+						desc="$desc $word"
+					fi
+				done
+			fi
+		fi
+	done
+	desc="`echo $desc`"	# strip leading and trailing whitespace
+	
+	echo ".IP \"$title($sect)\" 10"
+	echo "$desc"
+	}
+
+if [ -z "$*" ] ; then
+	files="`echo *.ro`"
+else
+	files="$*"
+fi
+
+for file in $files ; do
+	dofile < $file
+done
+

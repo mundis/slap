@@ -1,0 +1,86 @@
+#!/bin/sh
+# @(#)lfs.api	1.0	16may2009 MJS
+#------------------------------------------------------------------------------
+# 1.0	16may2009 MJS	original version.
+#------------------------------------------------------------------------------
+capi_name=LFS
+capi_desc="fseeko()/ftello()/off_t (LFS)"
+capi_enablers='-D_LARGEFILE_SOURCE'	# static API-defined enablers
+capi_indicators='_LARGEFILE_SOURCE'	# API-defined indicators 
+capi_clevels="89 89X 99"
+
+# platform-dependant enablers:
+# for LFS, these must be computed.
+if getconf LFS_CFLAGS >/dev/null 2>&1; then
+	cflags="`getconf LFS_CFLAGS 2>/dev/null`"
+	ldflags="`getconf LFS_LDFLAGS 2>/dev/null`"
+	libs="`getconf LFS_LIBS 2>/dev/null`"
+fi
+# split cflags into just the parts that enable the API
+# and the part that actually enables largefile access:
+words="$cflags"
+cflags=''
+for word in $words ; do
+	case "$word" in
+	*_FILE_OFFSET_BITS=[0-9]*)
+		;;
+	*)
+		s=' '
+		test -z "$cflags" && s=''
+		cflags="${cflags}${s}$word"
+		;;
+	esac
+done
+# if no specific enablers in $cflags, presume the Summit-specified minimum:
+if test -z "$cflags" ; then
+	cflags='-D_LARGEFILE_SOURCE'
+	# and if we are on AIX, we'll need the AIX-specific alternative:
+	exec 9>&2
+	exec 2>/dev/null
+	case "`uname -sr`" in
+	*[Aa][Ii][Xx]*[1-9]*|SunOS*)
+		cflags="$cflags -DLARGEFILES"
+		;;
+	esac
+	exec 2>&9
+fi
+
+capi_try_cflags="$cflags:"
+capi_try_ldflags="$ldflags"
+capi_try_libs="$libs"
+
+#desc: Determine availability of the Large-File-Summit (LFS) API, ie: the
+#desc: fseeko(), ftello() functions and the off_t type;
+#desc: and the C-compiler flags needed to enable it if available.
+
+#cvar: CONF_${capi_name}_CFLAGS/_LDFLAGS/_LIBS
+
+#out: relevant "makefile" variable-definitions.
+
+eval status='$CONF_'"${capi_name}"'_PROBED'
+test -n "$status" && exit "$status"
+
+. mod.start
+
+# build a small ANSI C source file that uses LFS types and functions:
+# note that we are only interested in source-level *use* of the API,
+# not in the runtime success of the API, nor in the size of off_t...
+cat > /tmp/$$.c <<'EOT'
+#include <stdio.h>
+#include <stdlib.h>
+int main(unsigned int, char **);
+
+int main(unsigned int ac, char **av)
+	{
+	off_t pos;
+
+	#if 0
+	fprintf(stdout, "%.0f\n", (double) sizeof(off_t) * 8);
+	#endif
+	pos = ftello(stdout);
+	fseeko(stdout, pos, SEEK_SET);
+	return (EXIT_SUCCESS);
+	}
+EOT
+
+. mod.capisearch

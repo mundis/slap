@@ -1,0 +1,45 @@
+ [previous] [up]  [next]          [Image]          [Image] [Image] [Image]
+
+                             Installation Guide
+
+----------------------------------------------------------------------------
+
+  1. Preparation
+
+     From a shell prompt, cd into the directory where the distribution was
+     unpacked.
+
+  2. Generate the Makefile
+
+     Execute the command:
+
+             ./Configure directory
+
+     where directory is the top-level directory where the software is to be
+     installed. If directory is not specified, $HOME will be used.
+
+     This creates a "makefile". If any of the configuration settings could
+     not be automatically determined, you will be warned that the makefile
+     may need manual adjustment (although this is rare).
+
+     You may want to inspect the generated makefile anyway, just to see.
+
+  3. Build and Install the programs and manpages
+
+             make install
+
+  4. Finishing Off
+
+     Once you have a working installation, you may as well remove the
+     temporary files from the distribution directory, by executing the
+     command:
+
+             make clean
+
+     This does not remove the makefile, but it does clear out the real junk.
+
+     Next, there is the (optional) task of setting up your UNIX
+     print-spooler.
+
+----------------------------------------------------------------------------
+ [previous] [up]  [next]              [Image]            [home]  [mail me]

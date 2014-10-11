@@ -1,0 +1,47 @@
+#!/bin/sh
+# spit a formatted, bordered error/warning message to stderr.
+# First argument is a string message-type, used as a sub-banner.
+# Remaining arguments are the message. An argument of exactly '.' starts
+# a new output line, '..' starts a new indented output line, and '...'
+# starts a double-indented output line.
+#
+test -z "$1" && exit
+
+exec 9>&1       # remember stdout
+exec 1>&2       # redirect stdout to stderr
+indent=''
+pfx='***'
+
+echo ''
+echo '*************************************************************************'
+echo "${pfx} ${1} ${pfx}"
+echo "${pfx}"
+shift
+buf=''
+indent=''
+for word in "$@" ; do
+	if test "$word" = '.' ; then
+		# start new line
+		echo "${pfx}${indent}$buf"
+		buf=''
+		indent=''
+	elif test "$word" = '..' ; then
+		# start new line with indent
+		echo "${pfx}${indent}$buf"
+		buf=''
+		indent='    '
+	elif test "$word" = '...' ; then
+		# start new line with double-indent
+		echo "${pfx}${indent}$buf"
+		buf=''
+		indent='        '
+	else
+		buf="$buf $word"
+	fi
+done
+test -n "$buf" && echo "${pfx}${indent}$buf"
+
+echo "$pfx"
+echo '*************************************************************************'
+echo ''
+exec 1>&9       # restore stdout

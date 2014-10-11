@@ -1,0 +1,88 @@
+'\" t
+.\" MJS Portable C Library
+.\" Module: quick-reference manual-page for str_dup()
+.\"
+.\" Copyright (c) 1992, 1994 Mike Spooner
+.\"----------------------------------------------------------------------
+.\" This program is free software; you can redistribute it and/or modify
+.\" it under the terms of the GNU General Public License as published by
+.\" the Free Software Foundation; either version 2 of the License, or
+.\" (at your option) any later version.
+.\"
+.\" This program is distributed in the hope that it will be useful,
+.\" but WITHOUT ANY WARRANTY; without even the implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+.\" GNU General Public License for more details.
+.\"
+.\" You should have received a copy of the GNU General Public License
+.\" along with this program; if not, write to the Free Software
+.\" Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+.\"----------------------------------------------------------------------
+.TD
+.TH str_dup @LF 14feb94 "MJSulib"
+.SH NAME
+str_dup \- duplicate a string onto the heap
+.SH SYNOPSIS
+#include "mjsu.h"
+
+CHAR *str_dup(const CHAR *str, BOOL force);
+.SH DESCRIPTION
+\fBstr_dup()\fP attempts to copy the string at \fIstr\fP
+(including the terminating nul character) into an automatically
+allocated cell of heap memory.
+.LP
+If the allocation request cannot be satisfied, and \fIforce\fP is YES,
+the calling process is forcibly terminated by the call:
+.nf
+	error("out of memory");
+.fi
+.LP
+\fBNOTE:\fP the allocated memory should be subsequently explicitly
+deallocated by \fBmem_free()\fP or \fBfree()\fP when it is no longer needed.
+.SH RETURNS
+If successful, 
+\fBstr_dup()\fP returns a pointer to the allocated memory,
+which is also a pointer to the newly minted copy of the string at \fIstr\fP.
+Otherwise, NULL (if anything) is returned.
+.SH EXAMPLE
+To take a modifiable copy of a const (read-only) string:
+.nf
+
+	BOOL parse(const CHAR *line)
+		{
+		const CHAR *delims = "\\t ()[],;:.!?$%&\\"\'";
+		CHAR *buf;
+		CHAR *w;
+
+		/* although strtok() is handy, it modifies the
+		 * string being tokenised. Thus we must use
+		 * a COPY of the original string.
+		 */
+		if (!(buf = str_dup(line, NO)))
+			return (NO);
+
+		/* use strtok() to break off individual words,
+		 * and process them one at a time...
+		 */
+		for (w = strtok(buf, delims); w; w = strtok(NULL, delims))
+			process_word(word);
+
+		mem_free(buf);
+		return (YES);
+		}
+		
+.fi
+.SH SEE ALSO
+\fBmem_buy(@LF)\fP, \fBmem_free(@LF)\fP,
+\fBmjsu(@MI)\fP.
+
+\fBmalloc()\fP and \fBfree()\fP as defined by ANSI X3.159-1989.
+.SH NOTES
+Many compilation environments provide a functionally similar strdup().
+However, strdup() is not defined by ANSI x3.159-1989, whereas \fBstr_dup()\fP 
+can be used in 
+all ANSI C environments.
+.SH AVAILABILITY
+\fBstr_dup()\fP
+is written in C,
+conforming to ANSI X3.159-1989 (hosted program environment).

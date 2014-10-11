@@ -1,0 +1,97 @@
+'\" t
+.\" MJS Portable C Library
+.\" Module: quick-reference manual-page for warning()
+.\"
+.\" Copyright (c) 1991-1994 Mike Spooner
+.\"----------------------------------------------------------------------
+.\" This program is free software; you can redistribute it and/or modify
+.\" it under the terms of the GNU General Public License as published by
+.\" the Free Software Foundation; either version 2 of the License, or
+.\" (at your option) any later version.
+.\"
+.\" This program is distributed in the hope that it will be useful,
+.\" but WITHOUT ANY WARRANTY; without even the implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+.\" GNU General Public License for more details.
+.\"
+.\" You should have received a copy of the GNU General Public License
+.\" along with this program; if not, write to the Free Software
+.\" Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+.\"----------------------------------------------------------------------
+.TD
+.TH warning @LF 27oct99 "MJSulib"
+.SH NAME
+warning, vwarning \- print formatted warning message
+.SH SYNOPSIS
+#include "mjsu.h"
+
+UINT warning(CHAR *fmt, \|.\|.\|.\|);
+
+#include <stdarg.h>
+
+VOID vwarning(CHAR *fmt, va_list ap);
+.SH DESCRIPTION
+If \fIfmt\fR is not NULL, \fBwarning()\fP and \fBvwarning()\fP
+print a warning message to the
+standard-error
+channel.
+.LP
+If \fIfmt\fR is NULL, no message is printed.
+.LP
+The emitted message, if any, has the following
+structure:
+.nf
+
+	\fIprocess-name\fP: warning: \fImessage\fP
+
+.fi
+The
+.I process name
+is that
+recorded by an earlier call to
+\fBgetflags(@LF)\fP,
+if any, or the string "?".
+.LP
+The
+.I message
+is constructed
+from the format-specification
+.ul
+fmt
+using subsequent arguments,
+in the same way as the standard
+\fBfprintf(@LF)\fP and \fBvfprintf(@LF)\fP
+functions, respectively. 
+.SH RETURNS
+\fBwarning()\fP and \fBvwarning()\fP
+return the number of times that either function has been called with a
+non-NULL \fIfmt\fR,
+including the current call, ie: the total number of warning messages printed.
+.SH EXAMPLE
+.nf
+
+	for ( ; ac && *av; --ac, ++av)
+		{
+		if (!(pf = fopen(*av, "r")))
+			warning("cannot open file: %s\\n", errno);
+		else
+			{
+			process_file(pf);
+			fclose(pf);
+			}
+		}
+	/* This shows a use for the return value...
+	 * return failure if any warnings have been issued:
+	 */
+	return (warning(NULL) ? EXIT_FAILURE : EXIT_SUCCESS);
+
+.fi
+.SH SEE ALSO
+\fBgetflags(@LF)\fP, \fBusage(@LF)\fP, \fBerror(@LF)\fP, \fBremark(@LF)\fP,
+\fBmjsu(@MI)\fP.
+.LP
+\fBfprintf()\fP and \fBvfprintf()\fP, 
+as defined by ANSI X3.159-1989.
+.SH AVAILABILITY
+These functions are written in C,
+conforming to ANSI X3.159-1989 (hosted program environment).

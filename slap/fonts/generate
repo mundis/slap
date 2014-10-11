@@ -1,0 +1,69 @@
+#!/bin/sh
+#
+# NOTE: to generate fonts for devices with different X and Y resolutions
+# (such as the SmartLabel-Plus), you need to have the font-data delivered
+# and an X11R6 or later fontserver. The X11R5 fontserver only seems to
+# heed the X resolution, and assumes an identical Y resolution...
+#
+FONTSERVER=mert:7100
+export FONTSERVER
+ 
+
+xlfd2font()
+	{
+	xlfd=${1:?}
+	dest=${2:?}
+
+	[ -f $dest ] && return
+	echo "${dest}: $xlfd"
+	if showfont -fn $xlfd > /tmp/$$ ; then
+		../../makefont /tmp/$$ $dest
+		rm -f /tmp/$$
+	fi
+	}
+
+genfont()
+	{
+	face=${1:?}
+	weight=${2:?}
+	slant=${3:?}
+	size=${4:?}	# in "points"
+
+	outfile="${face}"
+	[ "$weight" = "bold" ] && outfile="${outfile}-bold"
+	[ "$slant" = "i" ] && outfile="${outfile}-italic"
+	outfile="${outfile}-${size}"
+
+	ps=`expr $pointsize \* 10`	# convert to decipoints
+	xlfd_head="-type1-${face}-${weight}-${slant}-normal--0-${ps}"
+	xlfd_tail="*-0-iso8859-1"
+
+	# SLP-1000 resolution:
+	#
+	xlfd="${xlfd_head}-160-98-${xlfd_tail}"
+	xlfd2font $xlfd ${outfile}.plus
+
+	# SLP-2000 resolution:
+	#
+	xlfd="${xlfd_head}-203-203-${xlfd_tail}"
+	xlfd2font $xlfd ${outfile}.pro
+	}
+
+
+trap "rm -f /tmp/$$ ; exit 1"   0 1 2 3 13 14 15 16 17
+
+if [ ! -x ../../makefont ] ; then
+	echo "cannot execute ../../makefont" 1>&2
+	exit 1
+fi
+# fs -config ../../Type1/fs.conf -port 10000 #
+
+for pointsize in 8 10 12 14 18 24 ; do
+	for face in career areal thames strait ; do
+		for weight in medium bold ; do
+			for slant in r i ; do
+				genfont $face $weight $slant $pointsize
+			done
+		done
+	done
+done

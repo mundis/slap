@@ -1,0 +1,308 @@
+#!/bin/sh
+# UNIX SVR3 lp "printer interface" program
+# for Seiko SmartLabel printers driven by "slap".
+# 
+# @(#)svr3.pi	1.0	04may99 MJS
+# Copyright (c) 1999 Mike Spooner
+#
+
+#######################
+# Customisable stuff: #
+#######################
+FONT=areal-10	# see the slap manpage for a list of available fonts
+MEDIA=std	# see the slap manpage for a list of available media-types
+MODEL=auto	# see the slap manpage for a list of printer-models
+INSTALL_DIR=/usr/local
+MAXBAUD=0	# Set this to 38400, 19200 or 9600 if you have broken
+		# serial-port drivers (such as the Solaris "zs" driver
+		# that controls the onboard ports of some SPARC systems).
+		# Otherwise, set it to zero.
+BAUDMAP=0       # If driving an SLP-100, SLP-200 or SLP-240 from an IBM
+                # RS/6000 system running AIX 4.x via a 7318 8-port concentrator
+                # or 128-port adaptor, then set this to "2".
+                # If driving one of those same printers from a Sun SPARCstation
+                # or SPARCserver running SunOS 4.x or Solaris 2.1-2.4 via a
+                # Magma SBus serial card, then set this to "3".
+
+ 
+##############################################################################
+# Do not change stuff below here, unless you really know what you are doing: #
+##############################################################################
+banner_font=areal-10
+SLAP_FONTPATH=$INSTALL_DIR/lib/slapfonts	; export SLAP_FONTPATH
+SLAP=$INSTALL_DIR/bin/slap
+ 
+
+#------------------------------------------------------------------------
+# supported per-job print options:
+#
+#		-onobanner		do not print banner page
+#		-ofont=fontname		use named font
+#					default font is "areal-10"
+#					(banner always in "strait-14" font)
+#
+#------------------------------------------------------------------------
+
+
+# get job descriptors, etc
+#
+stamp="`date '+%H:%M   %d %b %Y'`"
+printer="`basename $0`"
+jobid="$1"
+user="`echo $2 | cut -d! -f2`"
+source="`echo $2 | cut -d! -f1`"
+title="$3"
+copies="$4"
+option_list="$5"
+shift 5
+
+
+# simplex version of lp.tell, because SVR3 does not have it...
+# The default alert is to mail the one-line status message to the
+# user that submitted this job. You may be able to come up with something
+# more appropriare for the local system...
+#
+LOGFILE="/usr/spool/lp/$printer/log"
+lptell()
+	{
+	while read line ; do
+		echo "$line" | mail -s "print job $jobid" "$user" 2>/dev/null
+		[ -w "$LOGFILE" ] && echo "$line" >> $LOGFILE
+	done
+	}
+# create logfile if needed:
+[ -f "$LOGFILE" ] || echo > "$LOGFILE"
+
+
+# derived things:
+#
+LPTELL="lptell"
+T="/tmp/$jobid"
+retval="0"
+
+
+# NOTE: unlike regular serial printers, the Seiko SmartLabel family are not
+# connected to the DCD or DTR signals (when using the Seiko cables), and
+# thus do not signal "offline" or "off" by dropping the computer's DCD.
+# Thus we should not catch SIGHUP (to detect printer hangups) in this script.
+# $SLAP will always use
+# the SmartLabel communication/command protocols to detect whether the printer
+# is connected and switched on, so this script does not need to do so by
+# trapping SIGHUP.
+#
+# In fact, the SVR4 documentation claims that printer interface scripts
+# are always invoked with SIGHUP ignored. Unfortunately under at
+# least Solaris 2.1-2.5, this is not the case. So we will explicitly do it
+# here just in case...
+#
+trap "" 1 13
+
+# We need to catch SIGINT in the script to detect "serial-break" conditions
+# that occur before $SLAP is invoked...
+#
+catch_break()
+	{
+	echo "error: serial-break detected: cables unplugged?" | $LPTELL
+	sleep 5
+	retval=129
+	exit $retval
+	}
+trap "catch_break" 2
+
+# We need to catch SIGTERM in the script so that we can tell
+# the user if we are cancelled before or after $SLAP has been invoked.
+#
+catch_cancellation()
+	{
+	echo "print job $jobid was cancelled" 1>&2
+	retval=0
+	exit $retval
+	}
+trap "catch_cancellation" 15
+
+
+# function to remove all temp files for this job:
+#
+tidyup()
+	{
+	rm -f /tmp/$$
+	rm -f ${T}.*
+	}
+trap 'tidyup ; exit $retval' 0
+
+# function to create a 5-line banner to stdout...
+#
+makebanner()
+	{
+	echo "Request $jobid from ${user:-nobody} at ${source:-`uname -n`}"
+	echo "$stamp"
+	echo "Title: `echo $title | head -3`"
+	}
+
+
+# function to deliver files to the printer, detecting faults...
+#
+# The funny business with "exec 9>&1" and "2>&1 1>&9" is to allow the
+# standard ERROR of the transporter to be piped to $LPTELL, whilst the
+# standard OUTPUT of the transporter goes to the standard OUTPUT of this
+# script (which is connected to the printer port).
+#
+# Note that we have to notice the exit status of the transporter,
+# FROM WITHIN THE PIPELINE, which means that we must run the transporter
+# in an encapsulating sub-shell.
+#
+# Printer errors (eg: paper out) which the transporter reports to stderr are
+# redirected into a pipe to $LPTELL, which adjusts the status reported by
+# lpstat.
+#
+exec 9>&1	# remember stdout (the printer port) under another number
+deliver()
+	{
+	xcopies=$1 ; shift
+	xfont=$1 ; shift
+	xfiles=$*
+ 
+	# let transporter handle cancellations etc, by special magic: if THIS
+	# script catches the appropriate signals (but does nothing noticeable),
+	# then any invoked command will be started with the default disposition
+	# for those signals - see exec(2).
+	#
+	trap "true" 6 13 15
+ 
+	# invoke transporter:
+	#
+	( \
+	rm -f ${T}.disable ; \
+	$SLAP -b $MAXBAUD -p $MODEL -m $MEDIA -x $BAUDMAP \
+		-s -c$xcopies -f$xfont $xfiles || echo $? > ${T}.disable \
+	) 2>&1 1>&9 | $LPTELL 1>/dev/null
+ 
+	# restore cancellation-handling:
+	#
+	trap "" 6 13
+	trap "catch_cancellation" 15
+
+	# check for unrecovered printer/comms faults...
+	#
+	if [ -f "${T}.disable" ] ; then
+		sleep 5 # give lpsched time to register messages from $LPTELL
+		return 1
+	fi
+
+	return 0
+	}
+
+
+# collect print-job options:
+#
+printbanner=yes
+inlist=""	# for parsing list-based options
+
+for option in $option_list ; do
+
+	case "${inlist}${option}" in
+
+	# interface-specific options:
+	#
+	font=*)
+		FONT="`expr \"$option\" : \"^[^=]*=\(.*\)\"`"
+		;;
+
+	# conventional SVR4 options:
+	#
+	nobanner)
+		printbanner=no
+		;;
+	nofilebreak)
+		# ignore - does not apply to this interface
+		;;
+
+	# options required to support BSD 4.2 lpd clients:
+	# (these options are internal to the lp system)
+	#
+	stty=* | flist=* | lpd=* )
+		inlist=`expr "${inlist}${option}" : "^\([^=]*=\)"`
+		case "${option}" in
+		${inlist}\'*\' )
+			item=`expr "${option}" : "^[^=]*='*\(.*\)'\$"`
+			;;
+		${inlist}\' )
+			continue
+			;;
+		${inlist}\'* )
+			item=`expr "${option}" : "^[^=]*='*\(.*\)\$"`
+			;;
+		${inlist}* )
+			item=`expr "${option}" : "^[^=]*=\(.*\)\$"`
+			;;
+		*\' )
+			item=`expr "${option}" : "^\(.*\)'\$"`
+			;;
+		* )
+			item="${option}"
+			;;
+		esac
+
+		#####
+		# We don't dare use "eval" because a clever user could
+		# put something in an option value that we'd end up
+		# exec'ing.
+		#####
+		case "${inlist}" in
+		stty= )
+			stty="${stty} ${item}"
+			;;
+		flist= )
+			flist="${flist} ${item}"
+			;;
+		lpd= )
+			lpd="${lpd} ${item}"
+			;;
+		esac
+
+		case "${option}" in
+		${inlist}\'*\' )
+			inlist=
+			;;
+		${inlist}\'* )
+			;;
+		*\' | ${inlist}* )
+			inlist=
+			;;
+		esac
+		;;
+
+	# unsupported options:
+	#
+	?* )
+		# NOTE: stderr must not be redirected yet!
+		echo "WARNING: unsupported \"-o ${option}\" option\n" \
+			"\"-o ${option}\" ignored, printing continues..." 1>&2
+		;;
+	esac
+done
+
+
+# Print banner page if any:
+#
+if [ "$printbanner" = "yes" ]; then
+	makebanner > ${T}.banner
+	if [ -s ${T}.banner ] ; then
+		if deliver 1 $banner_font ${T}.banner ; then
+			sleep 0
+		else
+			retval=129
+			exit
+		fi
+	fi
+fi
+
+# Now print the actual data files:
+#
+if deliver $copies $FONT $* ; then
+	sleep 0
+else
+	retval=129
+fi
+
+exit

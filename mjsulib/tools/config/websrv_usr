@@ -1,0 +1,128 @@
+#!/bin/sh
+# @(#)websrv.usr	3.1	03oct2009 MJS
+#------------------------------------------------------------------------------
+# 3.1	03oct2009 MJS	removed use of egrep and awk, for portability to 7th Ed.
+# 3.0   17may2009 MJS   compatibility with new "soft/hard" Configure mechanism,
+#                       also removal of temp files on interrupt.
+# 2.0   27sep2004 MJS   renamed websrv.usr,
+#			revised to be used as a Configure-callable module.
+# 1.0   03jan2001 MJS   original version (called webas).
+#------------------------------------------------------------------------------
+#
+#desc: Determine the user that the (or a) web-server runs as on the local
+#desc: system. This is usually used to set ownership of files that are
+#desc: (potentially) used by a web-server, such as CGI scripts, web-server
+#desc: plugins, and so on.
+#desc:
+#desc: 'Configure' variables: CONF_WEB_RUN_USR
+#desc:
+#desc: The equivalent makefile variables (if any) have the same names without
+#desc: the leading 'CONF_'.
+
+#opt: -webas=NAME
+#opt: 	specifies which user should own files that may be used by a
+#opt:   web-server eg: the nominal owner of CGI scripts.
+
+#out: relevant "makefile" variable-definitions.
+
+eval status='$CONF_WEB_RUN_USR_PROBED'
+test -n "$status" && exit "$status"
+. mod.start
+
+
+############################################################################
+#########         module-specific '-configure' actions          ############
+############################################################################
+status=0	# unless proven otherwise
+
+# process additional 'Configure' command-line flags:
+#
+for flag in "$@" ; do
+	case "$flag" in
+	-webas=*|--webas=*)
+		CONF_WEB_RUN_USR="`echo $flag | sed -e 's/^[^=]*=//'`"
+		test -z "$CONF_WEB_RUN_USR" && exec "$my_full_pathname" -help
+		setvar.___ CONF_WEB_RUN_USR "$CONF_WEB_RUN_USR"
+		;;
+	esac
+done
+
+if test -z "$CONF_WEB_RUN_USR" ; then
+	# We try to intuit it from a process-listing (being careful not
+	# not to rely on any particular system's "ps" syntax).
+	# We don't try *too* hard, as Configure (via this script!)
+	# provides a flag to override the default for this item
+	# (because it is a local admin policy issue, rather than a
+	# system-capability issue). For safety's sake, when
+	# probing for current activity, we exclude common "system"
+	# user-identities ("root", etc).
+	#
+	CONF_WEB_RUN_USR=`( ps -ef ; ps aux ) 2>/dev/null | \
+	while read line ; do
+		case "$line" in
+		*[-/]httpd|' 'roxen*|' 'wn*)
+			echo "$line"
+			;;
+		esac
+	done | while read lid line ; do
+		case "$lid" in
+		root|adm|operator|*guest*|*uucp|lp|mail|smmsp|smtp|listen)
+			;;
+		shutdown|halt|news|ftp*|games|oracle|informix)
+			;;
+		*)
+			echo "$lid"
+		esac
+	done | sort | uniq | \
+	while read candidate ; do echo "$candidate"; break; done`
+	
+	if test -z "$CONF_WEB_RUN_USR" ; then
+		# we could not intuit it from the current system
+		# activity, so we try to guess it from the list of
+		# available accounts (or as close an approximation to
+		# the list as is reasonable; eg: check /etc/passwd,
+		# but probably not worth checking NIS+ passwd.org_dir
+		# table, NIS passwd map, or other "remote" databases.
+		#
+		oldIFS="$IFS"
+		IFS=":"
+		# note that we cannot make assumptions about the
+		# ordering of /etc/passwd, so we must specify the
+		# explicit "most-likely" preference with an outer
+		# for-loop...
+		for pat in "www*" http httpd nobody daemon demon "" ; do
+			while read CONF_WEB_RUN_USR junk ; do
+				case "$CONF_WEB_RUN_USR" in
+				$pat)	break 2 ;;
+				esac
+			done </etc/passwd 2>/dev/null
+		done
+		IFS="$oldIFS"
+	fi
+fi
+
+# (if all guesses failed, just use "nobody" as a placeholder...)
+if test -z "$CONF_WEB_RUN_USR" ; then
+	status=2
+	CONF_WEB_RUN_USR=nobody
+fi
+
+echo "Web-server probably runs as user: $CONF_WEB_RUN_USR" 1>&2
+
+# emit makefile-segment to stdout:
+#
+cat <<EOT
+
+# the user-account that your Web-server runs as; typically an unpriviledged
+# account, to avoid security problems:
+#
+WEB_RUN_USR=$CONF_WEB_RUN_USR
+
+EOT
+
+# and set 'Configure' variables:
+#
+setvar.___ CONF_WEB_RUN_USR "$CONF_WEB_RUN_USR"
+setvar.___ CONF_WEB_RUN_USR_PROBED "$status"
+
+exit "$status"

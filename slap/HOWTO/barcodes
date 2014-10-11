@@ -1,0 +1,11 @@
+slap/HOWTO/barcodes
+===================
+Edition 1.0, 03feb2001 by MJS
+
+
+Many people have asked how to print barcode labels using slap.
+
+You will need a scalable PostScript barcode font. Then just follow
+the instructions in the slap "morefonts" HOWTO.
+
+-------------------------------------------------------------------------------

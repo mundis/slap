@@ -1,0 +1,61 @@
+'\" t
+.\" MJS Portable C Library
+.\" Module: quick-reference manual-page for MBM bit-operations
+.\"
+.\" Copyright (c) 1997 Mike Spooner
+.\"----------------------------------------------------------------------
+.\" This program is free software; you can redistribute it and/or modify
+.\" it under the terms of the GNU General Public License as published by
+.\" the Free Software Foundation; either version 2 of the License, or
+.\" (at your option) any later version.
+.\"
+.\" This program is distributed in the hope that it will be useful,
+.\" but WITHOUT ANY WARRANTY; without even the implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+.\" GNU General Public License for more details.
+.\"
+.\" You should have received a copy of the GNU General Public License
+.\" along with this program; if not, write to the Free Software
+.\" Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+.\"----------------------------------------------------------------------
+.TD
+.TH mbm_bits @LF 23jun97 "MJSulib"
+.SH NAME
+mbm_bits, mbm_clr, mbm_clrb, mbm_rev, mbm_revb, mbm_set, mbm_setb, mbm_tstb \- bitmap manipulations
+.SH SYNOPSIS
+#include "mjsu.h"
+
+MBITMAP *mbm_clr(MBITMAP *bm);
+.br
+MBITMAP *mbm_clrb(MBITMAP *bm, USHORT r, USHORT c);
+
+MBITMAP *mbm_rev(MBITMAP *bm);
+.br
+MBITMAP *mbm_revb(MBITMAP *bm, USHORT r, USHORT c);
+
+MBITMAP *mbm_set(MBITMAP *bm);
+.br
+MBITMAP *mbm_setb(MBITMAP *bm, USHORT r, USHORT c);
+
+MBITMAP *mbm_tstb(MBITMAP *bm, USHORT r, USHORT c);
+.SH DESCRIPTION
+\fBmbm_clr()\fP, \fBmbm_rev()\fP and \fBmbm_set()\fP clears, inverts or sets,
+respectively, all bits in the bitmap at \fIbm\fP.
+.LP
+\fBmbm_clrb()\fP, \fBmbm_revb()\fP and \fBmbm_setb()\fP clear, invert or set,
+respectively, the single bit at column \fIc\fP of row \fIr\fP in the bitmap
+at \fIbm\fP.
+.LP
+\fBmbm_tstb()\fP tests whether the single bit at column \fIc\fP of row \fIr\fP
+in the bitmap at \fIbm\fP, is set or clear.
+.SH RETURNS
+\fBmbm_tstb()\fP returns YES if the addressed bit is set, else NO.
+All the other functions return \fIbm\fP.
+.SH SEE ALSO
+\fBmbm(@FF)\fP,
+\fBmbm_buy(@LF)\fP, \fBmbm_load(@LF)\fP, \fBmbm_save(@LF)\fB,
+\fBmjsu(@MI)\fP.
+.SH AVAILABILITY
+These functions
+are written in C,
+conforming to ANSI X3.159-1989.

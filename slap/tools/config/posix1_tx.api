@@ -1,0 +1,108 @@
+# Determine the C-compiler flags (relative to XACC) needed to enable
+# common extensions to the "POSIX.1 termios" API.
+# Print it as a Makefile definition to stdout, and set equivalent
+# environment variables.
+#
+
+# first locate an ANSI C compiler, if possible:
+#
+[ "$XACC" = "" ] && . ansic.cmd >/dev/null
+
+
+echo "probing for available POSIX.1 termios extensions" 1>&2
+
+# build a small POSIX.1 ANSI C source file that uses B57600 and CRTSCTS symbols:
+#
+cat > /tmp/$$.c << 'EOT'
+#include <unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <termios.h>	/* this is the important one! */
+#if 1
+#include <signal.h>
+#endif
+
+int main(unsigned int, char **);
+
+int main(unsigned int ac, char **av)
+	{
+	sigset_t ss;
+	#if defined(B57600) && defined(CRTSCTS)
+	return (EXIT_SUCCESS);
+	#else
+	return (EXIT_FAILURE);
+	#endif
+	}
+EOT
+
+# a function to test compilation...
+#
+trycompile()
+	{
+	xxxxxxx="${1:?internal error - missing parameter to trycompile}"
+
+	# divert our stderr, in case the potential program is not there
+	exec 9>&2
+	exec 2>/dev/null
+
+	$* -o /tmp/$$.exe /tmp/$$.c >/dev/null 2>&1
+
+	# restore stderr
+	exec 2>&9
+
+	# Careful: some compilers do not give generated program files
+	# execute permissions!
+
+	if [ -f /tmp/$$.exe ] && chmod +x /tmp/$$.exe && /tmp/$$.exe ; then
+		return 0
+	fi
+	return 1
+	}
+
+# Hunt for the library...
+#
+found=no
+dir=""
+# only if we can...
+#
+if [ "$XACC" != "" ] ; then
+
+	# the list of candidate options is a bit pathological, mainly due to
+	# different systems' interpretation of __STDC__ in header files... :-(
+	#
+	# (darned Solaris! why didn't Sun follow the guidelines for __STDC__
+	# in Appendix B of the published POSIX.1 standard, rather than inventing
+	# their own semantics for it?)
+	#
+	# The order of the list is VERY IMPORTANT - do not mess with it.
+
+	for opts in '-D_POSIX_SOURCE' '-D_POSIX_C_SOURCE=2' '' '-D__EXTENSIONS__' '-D__STDC__==0' ; do
+
+		if trycompile "$XACC $opts" ; then
+			found=yes
+			break
+		fi
+	done
+fi
+[ "$found" != yes ] && opts=""
+
+
+# and output...
+#
+cat << EOT
+
+# Extra C compiler flags (relative to XACC) needed to enable the available
+# common extensions to the "POSIX.1 termios" API, such as B57600 and CRTSCTS,
+# expressed as -I, -L or -l flags.
+#
+# NOTE: as such extensions are not available on all systems, this
+# variable only specifies how to enable such facilities WHEN AVAILABLE.
+# Modules compiled using the compiler flags expressed here must be written
+# to tolerate the lack of such facilities, using eg: #ifdef CRTSCTS etc.
+#
+POSIX1_TERMIOS_EXTENSIONS=$opts
+
+EOT
+
+export POSIX1_TERMIOS_EXTENSIONS
+

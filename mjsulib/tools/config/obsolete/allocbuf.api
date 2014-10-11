@@ -1,0 +1,364 @@
+#!/bin/sh
+# @(#)nlist.api	2.0	27sep2004 MJS
+#
+#desc: Determines C-compiler flags needed to get portable aligned-"allocbuf()"
+#desc: function.
+#desc:
+#desc: 'Configure' variables: CONF_ALLOCBUF_CFLAGS CONF_ALLOCBUF_LDFLAGS
+#desc:
+#desc: The equivalent makefile variables (if any) have the same names without
+#desc: the leading 'CONF_'.
+
+#out: relevant "makefile" variable-definitions.
+
+
+##############################################################################
+# NOTICE: exit codes must be as follows:
+#
+#	0:	values determined, validated and set
+#	1:	values determined, but with warnings
+#	2:	values could not be determined (dummy values have been set)
+#	3:	-cflags or -help was specified (thus values have not been set)
+#	4:	complete failure: could not even try to determine values
+##############################################################################
+
+
+###########################################################################
+#########      Boilerplate helper main program, do not edit!     ##########
+###########################################################################
+
+# first, generate my own basename, for use in help/diagnostic/other messages;
+# using a slow but extremely portable method...
+me="`echo \"$0\" | sed -e 's:.*/::'`"
+
+# now find the pathname of this script, using method portable to
+# all Bourne-compatible shells (even as far back as 7th Edition UNIX)...
+#
+case "$0" in
+/*)	# invoked by absolute pathname
+	my_full_pathname="$0"
+	;;
+*/*)	# invoked by partially-qualified relative pathname
+	# NOTE: must strip any leading "./" from $0...
+	my_full_pathname="`pwd`/`echo \"$0\" | sed -e 's:^\./::'`"
+	;;
+*)	# invoked by unqualified pathname or arg0 has been munged by invoker
+	dir="`pwd`"
+	if test -f "$dir/$me" && test -r "$dir/$me" ; then
+		# invoked by unqualified pathname
+		my_full_pathname="$dir/$me"
+		my_full_dirname="$dir"
+	else
+		# arg0 has been munged, must search dirs in $PATH
+		oldIFS="$IFS"
+		IFS=":"
+		for dir in $PATH ; do
+			if test -f "$dir/$me" && test -r "$dir/$me" ; then
+				my_full_pathname="$dir/$me"
+				my_full_dirname="$dir"
+			fi
+		done
+		IFS="$oldIFS"
+	fi
+	;;
+esac
+test -z "$my_full_dirname" && \
+	my_full_dirname="`echo \"$my_full_pathname\" | sed -e 's:/[^/]*$::'`"
+
+# now, set PATH to locate 'Configure' utilities, as I may need them...
+PATH="${my_full_dirname}:${my_full_dirname}/..:${PATH}"
+
+# now determine what to do based on flags...
+#
+t='	'
+case "$1" in
+
+-cflags)
+	exec 1>&2
+	state=''
+	while read key text ; do
+		case "$key" in
+		'#opt:')
+			state=1
+			case "$text" in
+			-*)
+				echo "${t}$text"
+				;;
+			*)
+				echo "${t}${t}$text"
+				;;
+			esac
+			;;
+		*)
+			test -n "$state" && break
+			;;
+		esac
+	done <"$my_full_pathname"
+	exit 3
+	;;
+-configure)
+	# handled below...
+	;;
+-help|--help|*)
+	exec 1>&2
+	echo "${me} is a 'Configure' helper."
+	echo ''
+	echo "usage: $me [ -help | -cflags | -configure ]" \
+		"[ <'Configure' options> ]"
+	echo ''
+	state=''
+	while read key text ; do
+		case "$key" in
+		'#desc:')
+			state=1
+			echo "$text"
+			;;
+		*)
+			test -n "$state" && break
+			;;
+		esac
+	done <"$my_full_pathname"
+	echo ''
+	echo 'Options:'
+	echo "$t"'-help   print full help on this module to stderr, and exit.'
+	echo "$t"'-cflags describe the 'Configure' command-line flags that'
+	echo "${t}$t"'this helper handles, to stderr, and exit.'
+	echo "$t"'-configure'
+	echo "${t}${t}process relevant 'Configure' command-line flags, probe the"
+	echo "${t}${t}the local system for relevant settings, set the relevant"
+	echo "${t}${t}'Configure' variables; and print, to stdout, any"
+	state=''
+	while read key text ; do
+		case "$key" in
+		'#out:')
+			state=1
+			echo "${t}${t}$text" 
+			;;
+		*)
+			test -n "$state" && break
+			;;
+		esac
+	done <"$my_full_pathname"
+	exec "$my_full_pathname" -cflags
+	exit 3	# paranoia
+	;;
+esac
+
+
+############################################################################
+#########	 module-specific '-configure' actions	  ############
+############################################################################
+
+# NOTE: 'Configure' variables *must* be set with the setvar program, to
+# ensure that other modules can see them.
+#
+shift || exit 4
+status=0
+
+if test -z "$CONF_ALLOCBUF_CFLAGS" ; then
+
+	# locate an ANSI C compiler, if not already:
+	#
+	if test -z "$CONF_XACC" ; then
+		chain /tmp/$$.chain ansic.cmd -configure "$@" &&
+			. /tmp/$$.chain
+		rm -f /tmp/$$.chain
+	fi
+
+	# probe for implementation-methods, in order of portability (ie: for
+	# good backward-compatible binary-portability), and finally fall-back
+	# to extremely portable but suboptimal implementation-method...
+	# Thus, in order:
+	#
+	# If we have sysconf(_SC_PAGE_SIZE), build a function that uses it;
+	# else if we have getpagesize(), build a function that uses it;
+	# else if we have valloc(), use it directly,
+	# else build a function that uses stdio BUFSIZ.
+	#
+
+	# build a small ANSI C source file that probes implementation-methods:
+	#
+	cat > /tmp/$$.c << EOT
+	#ifndef TRY_VALLOC
+	#include <unistd.h>
+	#endif
+	#include <stdlib.h>
+	
+	int main(ac, av)
+		unsigned int ac;
+		char **av;
+		{
+		#ifdef TRY_VALLOC
+		void *p;
+		p = valloc(127);	/* prime! */
+		printf("%p\n", p);
+		#else
+		#ifdef TRY_SC_PAGE_SIZE
+		long n;
+		n = sysconf(_SC_PAGE_SIZE);
+		#elif TRY_GETPAGESIZE
+		int n;
+		n = getpagesize();
+		#endif
+		printf("%lu\n", n);
+		#endif
+		return (0);
+		}
+EOT
+	
+	HAVE_UNISTD=0
+	HAVE_SC_PAGE_SIZE=0
+	HAVE_GETPAGESIZE=0
+	HAVE_VALLOC=0
+
+	# only if we can...
+	#
+	if test -n "$CONF_XACC" ; then
+		# probe for sysconf(_SC_PAGE_SIZE)
+		for XCF in '' -D_POSIX_SOURCE -D__EXTENSIONS__ ; do
+			$CONF_XACC -DTRY_SC_PAGE_SIZE $XCF \
+				-o /tmp/$$.exe /tmp/$$.c >/dev/null 2>&1
+			chmod +x /tmp/$$.exe 2>/dev/null
+			if test -x "/tmp/$$.exe" && /tmp/$$.exe >/dev/null ; then
+				HAVE_UNISTD=1
+				HAVE_SC_PAGE_SIZE=1
+				SC_PAGE_SIZE_CFLAGS="$XCF"
+				break
+			fi
+		done
+
+		# probe for getpagesize();
+		for XCF in '' -D__EXTENSIONS__ ; do
+			$CONF_XACC -DTRY_GETPAGESIZE $XCF \
+				-o /tmp/$$.exe /tmp/$$.c >/dev/null 2>&1
+			chmod +x /tmp/$$.exe 2>/dev/null
+			if test -x "/tmp/$$.exe" && /tmp/$$.exe >/dev/null ; then
+				HAVE_GETPAGESIZE=1
+				GETPAGESIZE_CFLAGS="$XCF"
+				break
+			fi
+		done
+
+		# probe for memalign();
+		for XCF in '' -D__EXTENSIONS__ ; do
+			$CONF_XACC -DTRY_VALLOC $XCF \
+				-o /tmp/$$.exe /tmp/$$.c >/dev/null 2>&1
+			chmod +x /tmp/$$.exe 2>/dev/null
+			if test -x "/tmp/$$.exe" && /tmp/$$.exe >/dev/null ; then
+				HAVE_VALLOC=1
+				VALLOC_CFLAGS="$XCF"
+				break
+			fi
+		done
+	fi
+	rm -f /tmp/$$.c /tmp/$$.exe
+
+	# build composite results:
+	module=configured/allocbuf.c
+	rm -f "$module"
+	#
+	echo "#define HAVE_UNISTD $HAVE_UNISTD" >>"$module"
+	echo "#define HAVE_SC_PAGE_SIZE $HAVE_SC_PAGE_SIZE" >>"$module"
+	echo "#define HAVE_GETPAGESIZE $HAVE_GETPAGESIZE" >>"$module"
+	echo "#define HAVE_VALLOC $HAVE_VALLOC" >>"$module"
+	cat >>"$module" << EOT
+#if (HAVE_UNISTD > 0)
+#include <unistd.h>
+#endif
+#include <stdlib.h>
+#include <stdio.h>
+
+static void *alignup(void *ptr, unsigned int alignment)
+	{
+	unsigned char *p = ptr, *q;
+	unsigned long x;
+
+	x = (unsigned long) p + alignment;
+	q = (unsigned char *) (x - (x % alignment));
+	return ((void *)q);
+	}
+	
+void *allocbuf(size_t, size_t);
+void *allocbuf(size_t want, size_t align)
+	{
+	size_t get;
+	unsigned char *p, *q;
+
+	if (align <= 0)	/* compute "good" runtime I/O-buffer alignment */
+		{
+		/* IMPORTANT: order of conditional tests is crucial for
+		 * maximising per-platform-family binary-compatibility;
+		 * *must* be ordered in order of greatest binary-compatibility.
+		 * with the final nonoptimal but maximally-portable "default"
+		 * case last.
+		 */
+
+		#if (HAVE_SYSCONF > 0) && defined(_SC_PAGE_SIZE)
+		/* note that sysconf(_SC_PAGE_SIZE) can fail with
+		 * "unimplemented on current runtime environment", so
+		 * must allow fallback to getpagesize() or fall-back default...
+		 */
+		align = sysconf(_SC_PAGE_SIZE);
+		#endif
+
+		#if (HAVE_GETPAGESIZE > 0)
+		if (align <= 0)
+			align = getpagesize();
+		#endif
+
+		if (align <= 0)
+			{
+			#if (HAVE_VALLOC > 0)
+			return (valloc(want));
+			#else
+			/* cannot determine a runtime VM pagesize, so
+			 * presume BUFSIZ is an at least moderately
+			 * good alignment
+			 */
+			align = BUFSIZ;
+			#endif
+			}
+		}
+
+	/* allocate block large enough for want plus alignment overhead */
+	get = ((want < 16) ? 16 : want) + align - 1;
+	if (!(p = malloc(get)))
+		return (NULL);
+
+	q = alignup(p, align);
+
+	#ifdef DEBUG
+	fprintf(stderr, "want %u bytes, align %lu, ", want, align);
+	fprintf(stderr, "alloc %u bytes @ %lu, ", get, p);
+	fprintf(stderr, "ret @ %lu, adj = %lu, rem = %lu\n",
+                q, q - p, (unsigned long) q % want);
+	#endif
+
+	return ((void *)q);
+	}
+EOT
+
+	CONF_ALLOCBUF_CFLAGS="$SC_PAGE_SIZE_CFLAGS"
+	CONF_ALLOCBUF_CFLAGS="$CONF_ALLOCBUF_CFLAGS $GETPAGESIZE_CFLAGS"
+	CONF_ALLOCBUF_CFLAGS="$CONF_ALLOCBUF_CFLAGS $VALLOC_CFLAGS"
+	CONF_ALLOCBUF_LDFLAGS="$XCF configured/allocbuf.o"
+	( cd configured && $CONF_XACC -c allocbuf.c ) || exit 1
+fi
+
+echo "\"allocbuf()\" API: $CONF_ALLOCBUF_CFLAGS ... $CONF_ALLOCBUF_LDFLAGS" 1>&2
+
+# emit makefile-segment to stdout:
+#
+cat <<EOT
+
+ALLOCBUF_CFLAGS=$CONF_ALLOCBUF_CFLAGS
+ALLOCBUF_LDFLAGS=$CONF_ALLOCBUF_LDFLAGS
+
+EOT
+
+# and set 'Configure' variables:
+#
+setvar CONF_ALLOCBUF_CFLAGS "$CONF_ALLOCBUF_CFLAGS"
+setvar CONF_ALLOCBUF_LDFLAGS "$CONF_ALLOCBUF_LDFLAGS"
+
+exit 0

@@ -1,0 +1,66 @@
+#!/bin/sh
+
+status=0
+trap "rm -f makefile /tmp/$$.* ; exit 1"	1 2 3 13 15
+trap "rm -f /tmp/$$.* ; exit $status"		0
+
+
+[ -f makefile ] && make clean >/dev/null 2>&1
+rm -f .makefile.bak
+[ -f makefile ] && mv makefile .makefile.bak
+
+PATH=tools/config:${PATH}:. ; export PATH
+[ -f dist.info ] && . dist.info && export emailaddr
+if [ "$emailaddr" = "" ] ; then
+	echo "$0 panic: internal error: emailaddr not defined" 1>&2
+	exit 1
+fi
+echo "Configuring ${pkgname}-${major}.${minor}.${micro}"
+
+cat > makefile << 'EOT'
+##############################################################################
+# This makefile was generated automatically by "Configure".
+#
+# WARNING:
+# ANY CHANGES YOU MAKE TO THIS FILE WILL BE LOST WHEN "Configure" IS RERUN.
+#
+# If you have to make changes to the generated makefile, save your new
+# version under a different name.
+#
+##############################################################################
+
+
+##############################################################################
+#
+# Compiler/Platform/Site-specific configuration settings:
+#
+##############################################################################
+
+EOT
+[ -n "$1" ] && insdir="$1" && shift
+
+. tools/config/locate		$insdir	>>makefile
+. tools/config/ansic.cmd		>>makefile
+. tools/config/posix1.api		>>makefile
+. tools/config/posix1_tx.api		>>makefile
+. tools/config/tcdrain.bug		>>makefile
+. tools/config/mjsu.api			>>makefile
+#. tools/config/socket.api		>>makefile
+#. tools/config/static.lib		>>makefile
+#. tools/config/nawk.cmd			>>makefile
+. tools/config/makewhatis.cmd		>>makefile
+
+echo "" >>makefile
+
+cat template.mkf >>makefile
+
+echo "Configuration Complete."
+if [ "$status" != "0" ] ; then
+	echo '\007'
+	echo 'However, some configuration settings could not be determined.'
+	echo 'You may need to edit the generated "makefile".'
+	echo '\007'
+	echo ''
+	echo "Email $emailaddr if you need help."
+fi
+

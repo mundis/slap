@@ -1,0 +1,39 @@
+#!/bin/sh
+# BSD lpd "output filter" for SmartLabel printers driven by "slap".
+#
+# @(#)bsd.pi	1.0	07jul98	MJS
+# Copyright (c) 1998 Mike Spooner
+#
+
+#######################
+# Customisable stuff: #
+#######################
+FONT=areal-10	# see the slap manpage for a list of available fonts
+MEDIA=std	# see the slap manpage for a list of available media-types
+MODEL=auto	# see the slap manpage for a list of printer-models
+INSTALL_DIR=/usr/local
+MAXBAUD=0	# Set this to 38400, 19200 or 9600 if you have broken
+		# serial-port drivers (such as the Solaris "zs" driver
+		# that controls the onboard ports of some SPARC systems).
+		# Otherwise, set it to zero.
+BAUDMAP=0	# If driving an SLP-100, SLP-200 or SLP-240 from an IBM
+		# RS/6000 system running AIX 4.x via a 7318 8-port concentrator
+		# or 128-port adaptor, then set this to "2".
+		# If driving one of those same printers from a Sun SPARCstation
+		# or SPARCserver running SunOS 4.x or Solaris 2.1-2.4 via a
+		# Magma SBus serial card, then set this to "3".
+
+##############################################################################
+# Do not change stuff below here, unless you really know what you are doing: #
+##############################################################################
+SLAP_FONTPATH=$INSTALL_DIR/lib/slapfonts	; export SLAP_FONTPATH
+SLAP=$INSTALL_DIR/bin/slap
+
+if [ ! -x $SLAP ] || [ ! -f $SLAP ] ; then
+	echo "fault: no such program: $SLAP" 1>&2
+	exit 1
+fi
+
+exec $SLAP -c 1 -f $FONT -m $MEDIA -p $MODEL -b $MAXBAUD -x $BAUDMAP
+
+

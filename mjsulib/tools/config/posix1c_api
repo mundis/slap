@@ -1,0 +1,63 @@
+#!/bin/sh
+# @(#)posix1.api        2.0     17may2009 MJS
+#------------------------------------------------------------------------------
+# 2.0   17may2009 MJS   compatibility with new "soft/hard" Configure mechanism,
+#                       also removal of temp files on interrupt.
+# 1.0   27sep2004 MJS   original version.
+#------------------------------------------------------------------------------
+capi_name=POSIX1c
+capi_desc="POSIX.1c-1995 (threads)"
+capi_enablers='-D_POSIX_C_SOURCE=199506L'	# API-defined enablers
+capi_indicators='_POSIX_C_SOURCE>=199506L'	# API-defined indicators
+capi_clevels="89 99"
+
+# platform-dependant enablers:
+capi_try_cflags=''
+capi_try_ldflags='-lpthread:-lthread'
+capi_try_libs=''
+
+# any other APIs we depend on:
+capi_dep_cflags=''
+capi_dep_ldflags=''
+capi_dep_libs=''
+
+
+#desc: Determine whether the POSIX.1c-1995 API is available, and the
+#desc: C compiler flags needed to enable it if possible.
+#desc:
+#cvar: CONF_${capi_name}_CFLAGS/_LDFLAGS/_LIBS
+
+#out: relevant "makefile" variable-definitions.
+
+eval status='$CONF_'"${capi_name}"'_PROBED'
+test -n "$status" && exit "$status"
+. mod.start
+
+
+# build a small ANSI C source file that uses an exclusive combination of
+# POSIX.1c facilities.
+#
+cat > /tmp/$$.c << EOT
+#include <unistd.h>
+#include <limits.h>
+#include <termios.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+int main(ac, av)
+	unsigned int ac;
+	char **av;
+	{
+	
+	#if defined(getchar_unlocked) && defined(putchar_unlocked)
+	flockfile(stdout);
+	fprintf(stdout, "", &ac);	/* prevent optimisation */
+	funlockfile(stdout);
+	return (EXIT_SUCCESS);
+	#else
+	return (EXIT_FAILURE);
+	#endif
+	}
+EOT
+
+. mod.capisearch

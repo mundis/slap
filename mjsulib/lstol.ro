@@ -1,0 +1,46 @@
+'\" t
+.\" MJS Portable C Library
+.\" Module: quick-reference manual-page for lstol()
+.\"
+.\" Copyright (c) 1995, 1997 Mike Spooner
+.\"----------------------------------------------------------------------
+.\" This program is free software; you can redistribute it and/or modify
+.\" it under the terms of the GNU General Public License as published by
+.\" the Free Software Foundation; either version 2 of the License, or
+.\" (at your option) any later version.
+.\"
+.\" This program is distributed in the hope that it will be useful,
+.\" but WITHOUT ANY WARRANTY; without even the implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+.\" GNU General Public License for more details.
+.\"
+.\" You should have received a copy of the GNU General Public License
+.\" along with this program; if not, write to the Free Software
+.\" Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+.\"----------------------------------------------------------------------
+.TD
+.TH lstol @LF 23jun97 "MJSulib"
+.SH NAME
+lstol \- convert 32-bit quantum from LSB-first into native byte-order
+.SH SYNOPSIS
+#include "mjsu.h"
+
+ULONG lstol(ULONG quantum);
+.SH DESCRIPTION
+\fBlstol()\fP computes the value of \fIquantum\fP in native byte-order
+on the assumption that the original byte-order was
+"least-significant-byte-first".
+.LP
+This is useful for reading data-structures from those files
+where 32-bit quanta
+are recorded in LSB-first format.
+.SH RETURNS
+\fBlstol()\fP returns the converted value.
+.SH SEE ALSO
+\fBltols(@LF)\fP,
+\fBlstos(@LF)\fP,
+\fBmjsu(@MI)\fP.
+.SH AVAILABILITY
+\fBlstol()\fP
+is written in C,
+conforming to ANSI X3.159-1989.

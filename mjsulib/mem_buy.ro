@@ -1,0 +1,85 @@
+'\" t
+.\" MJS Portable C Library
+.\" Module: quick-reference manual-page for mem_buy()
+.\"
+.\" Copyright (c) 1989, 1994 Mike Spooner
+.\"----------------------------------------------------------------------
+.\" This program is free software; you can redistribute it and/or modify
+.\" it under the terms of the GNU General Public License as published by
+.\" the Free Software Foundation; either version 2 of the License, or
+.\" (at your option) any later version.
+.\"
+.\" This program is distributed in the hope that it will be useful,
+.\" but WITHOUT ANY WARRANTY; without even the implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+.\" GNU General Public License for more details.
+.\"
+.\" You should have received a copy of the GNU General Public License
+.\" along with this program; if not, write to the Free Software
+.\" Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+.\"----------------------------------------------------------------------
+.TD
+.TH mem_buy @LF 14feb94 "MJSulib"
+.SH NAME
+mem_buy \- (re)allocate storage space on the heap, optionally failing hard
+.SH SYNOPSIS
+#include "mjsu.h"
+
+VOID *mem_buy(VOID *old, UINT nbytes, BOOL force);
+.SH DESCRIPTION
+\fBmem_buy()\fP attempts to allocate a cell of heap memory
+large enough
+to store an object of size
+\fInbytes\fP.
+.LP
+If \fIold\fP is not NULL, it assumed to be the address of an already-allocated
+cell. In this case the cell is resized according to \fInbytes\fP.
+.LP
+If the allocation request cannot be satisfied and \fIforce\fP is YES,
+the calling process is terminated by the following call:
+.nf
+
+	error("out of memory");
+
+.fi
+.SH RETURNS
+If successful, \fBmem_buy()\fP returns
+a pointer to the allocated memory,
+which
+is guaranteed to be aligned at a storage boundary suitable for a
+C datum of any type.
+.LP
+Otherwise, NULL (if anything) is returned.
+.SH EXAMPLE
+To convert a linked-list into a NULL-terminated vector:
+.nf
+ 
+        struct linkedlist
+                {
+                struct linkedlist *next;
+                BAG *this;
+                } *list, *tmp;
+        BAG *vec = NULL;
+ 
+        for (i = 0, vec = mem_buy(NULL, (i+1) * sizeof(*BAG), YES);
+                list;
+                ++i, vec = mem_buy(vec, (i+1) * sizeof(BAG), YES))
+                {
+                vec[i] = list->this;
+                tmp = list;
+                list = list->next;
+                mem_free(tmp);
+                }
+        vec[i] = NULL;
+ 
+.fi
+.SH SEE ALSO
+\fBmem_free()\fP, \fBerror(@LF)\fP,
+\fBmjsu(@MI)\fP.
+
+\fBmalloc()\fP, \fBrealloc()\fP and \fBfree()\fP,
+as defined by ANSI X3.159-1989.
+.SH AVAILABILITY
+\fBmem_buy()\fP
+is written in C,
+conforming to ANSI X3.159-1989 (hosted program environment).

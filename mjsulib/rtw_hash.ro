@@ -1,0 +1,71 @@
+'\" t
+.\" MJS Portable C Library
+.\" Module: quick-reference manual-page for the random-table-walk hash functions
+.\"
+.\" Copyright (c) 2005, 2012 Mike Spooner
+.\"----------------------------------------------------------------------
+.\" This program is free software; you can redistribute it and/or modify
+.\" it under the terms of the GNU General Public License as published by
+.\" the Free Software Foundation; either version 2 of the License, or
+.\" (at your option) any later version.
+.\"
+.\" This program is distributed in the hope that it will be useful,
+.\" but WITHOUT ANY WARRANTY; without even the implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+.\" GNU General Public License for more details.
+.\"
+.\" You should have received a copy of the GNU General Public License
+.\" along with this program; if not, write to the Free Software
+.\" Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+.\"----------------------------------------------------------------------
+.TD
+.TH rtw-hash @LF 18mar2012 "MJSulib"
+.SH NAME
+rtw_short_hash, rtw_long_hash, strhash \- compute hash of a sequence of bytes
+.SH SYNOPSIS
+#include "mjsu.h"
+
+ULONG rtw_long_hash(BYTE *key, size_t len);
+.LP
+USHORT rtw_short_hash(BYTE *key, size_t len);
+.LP
+USHORT strhash(CHAR *key);
+.SH DESCRIPTION
+\fBrtw_long_hash()\fP computes a hash value of the input sequence of bytes at
+\fIkey\fP
+whose length in bytes is given by \fIlen\fP.
+.LP
+All the bits of the return value are significant, even on platforms where
+long integers consist of a truly strange number of bits (eg: 137).
+This allows the returned value to be scaled down to a desired power-of-two
+range by simply masking off sufficient high-order bits, without losing any
+spectral distribution in the output values for different inputs.
+.LP
+\fBrtw_short_hash()\fP performs the same function but produces a short hash
+value instead of a long.
+.LP
+\fBstrhash()\fP is a convenience function that performs the equivalent of
+rtw_short_hash() on
+NUL-terminated strings.
+.SH RETURNS
+These functions return a highly spectrally-distributed hash value.
+A given input always produces the same output value.
+.SH SEE ALSO
+\fBmjsu(@MI)\fP.
+.SH AVAILABILITY
+These functions
+are written in C,
+conforming to ANSI X3.159-1989.
+.SH NOTES
+These functions do not generate "cryptographiclly secure" hash values,
+even though the
+outputs may appear inscrutable. They are intended for use for randomly-indexed
+arrays, indexing lookup-tables, and any other situation where dealing with
+integer values in lieu of strings or variable-length keys would be easier.
+.LP
+At the time of writing, for practical cryptographically-secure
+hashing, use of a
+SHA-2 or SHA-3 HMAC function is recommended. In specific circumstances,
+MD5 or SHA-1 may be adequate, as long as additional protective measures
+are taken (see the "nonce", "nonce-counter" and "client-nonce"
+features of RFC-2617).

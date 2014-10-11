@@ -1,0 +1,129 @@
+v3.3 17jun2012	split large modules into smaller pieces, to optimise size of
+		executables linked with this library.
+
+		compatibility with the most restrictive linkage allowed by
+		C89 (ANSI X3.159-1989) - external symbols must be distinct
+		in the first six characters; however, need to provide full
+		source-compatability with users of the library: achieved
+		by transparently mapping source-code-level symbols into shorter
+		link-level symbols at compile time.
+
+		changed type of first arg to getflags() from pointer-to-UINT
+		into pointer-to-INT, for castless compatibility with the
+		ANSI C standard.
+
+		added strtos() function.
+
+v3.2 18mar2012	made the RTW-hash table constant, rather than being differently
+		regenerated for every build: this was needed to be able to
+		provide a proper library ABI.
+
+		updated to the MJS Configure toolset version 3.2 - is now
+		Cygwin-compatible.
+
+		added manpages for the rtw-hash functions.
+
+v3.1 10mar2005	added "random-table walk" fast hashing functions.
+
+v3.0.1 27oct1999 added "API" manpage
+
+		changed template makefile and Configure script to
+		adapt installed location for manpages to local system
+		conventions (eg: file-format manpages are in section 4
+		on System V, but are in section 5 on BSD and Linux).
+
+		fixed namespace pollution bug in mjsu.h: made the
+		function alias names ltols, stols, lstol, lstos
+		hideable under control of MJS_FUNCTIONS (as was already
+		the case for all the other function-name aliases).
+
+		tidied up manpages so that cross-referenced HTML
+		versions could be generated mechanically for the
+		MJSulib website.
+
+		added history of changes (this document) to the
+		distribution.
+
+     18dec1998	packaged for publication on the 'net, alongside "slap".
+
+		Put more heuristics and more automatic adaptability into the
+		configure scripts.
+
+		added a few missing manpages, fixed typo's in some of the
+		others.
+
+v3.0 30jun1997	bitmap functions, originally needed for the rendering
+		engine of "slap".
+
+v2.2 17sep1995 	general-purpose byte-order conversion functions
+		(originally for a BOOTP server, but generally useful).
+
+		added auto-configure scripts to generate makefiles
+		for some common UNIX platforms.
+
+v2.1 04dec1993	pulled previous strdup() into the library, renamed as
+		str_dup(), to avoid conflicts with those compilers that
+		actually DO provide strdup()...
+
+		changed BOOL from an integer to an enumerated type.
+
+v2.0 21apr1993	getting fed up of copying functions between
+		programs, decided to gather all the general-purpose
+		self-contained ones together - the MJSulib library was born.
+
+		wrote full manpages, too!
+
+		started version number at 2.0 to distinguish from earlier
+		partial libraries and bits of fluff.
+
+		a fair amount of tidyup to existing programs was required
+		to remove "private" code and headers and to use the
+		MJSulib API instead (eg: unified symbolic constants,
+		unified types, the mjsu.h header file). Even though many
+		of the programs were using the library only for getflags()
+		and the memory-allocation routines...
+
+------------------------------------------------------------------------------
+Pre-Civilisation: when functions were written for specific programs and copied
+		around as needed...must have been crazy...
+
+03sep1992	made the regular-expression routines properly portable
+		(encoded patterns made up of USHORT elements, rather
+		than "signed char").
+
+05may1992	wrote trivial strdup() to port a UNIX program to MSDOS.
+
+12jun1991	noticed that all the programs using getflags had almost
+		identical surrounding code to report invalid command-lines
+		and other errors. Saw that such reporting should be
+		part of getflags itself (eg: production of "usage" message).
+		Added the "usagetail" and return-value semantics to
+		getflags.
+		
+28jan1991	functions to handle generic string-vectors, and unified
+		formatted messaging functions, and regular-expression
+		handling (for globbing), as part of a new UNIX shell.
+
+		The regexp functions were based on ideas expounded in
+		"Software Tools in Pascal" by Kernighan and Plauger,
+		although the actual interfaces were written to
+		match the old Whitesmiths' manpages, with adjustments
+		for portability and ANSI C.
+
+29dec1989	programmer-friendly memory-allocation functions: was getting
+		tired of typing long-winded conditional tests and fprintf()
+		calls around every invocation of malloc(), realloc() et al.
+	
+12jun1989	wrote a fully ANSI C (and portable) version of "getflags"
+		for use in a suite of MSDOS programs. This is where it
+		all really began.
+
+		wrote an ANSI C (and portable) version of Whitesmiths'
+		trivial but handy "cpystr" function.
+
+-------------------------------------------------------------------------------
+Pre-history:	fell in love with the Whitesmiths' C Library "getflags"
+		routine. Non-standard, non-portable (as implemented by WSL),
+		but incredibly flexible and simple to use. Vastly superior
+		to available equivalents of that era (1983-1989), such as
+		"getopt".

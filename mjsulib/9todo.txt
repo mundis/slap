@@ -1,0 +1,2 @@
+Need to convert the build-time "makever" shell-script into a C program,
+so that non-UNIX-like platforms can generate it automatically when needed.

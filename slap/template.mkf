@@ -1,0 +1,108 @@
+###########################################################################
+# Template makefile for "slap"
+# Copyright (c) Mike Spooner 1997-1998
+###########################################################################
+
+CFLAGS=-I. $(MJSU_INCLUDE) -DTCDRAIN_BROKEN=$(TCDRAIN_MAYBE_BROKEN) 
+CLIBS=$(MJSU_LIBRARY)
+
+default:	slap slap.1
+
+clean:
+	rm -f *.o slap makefont plato slapf.svr4 slapf.bsd slapf.svr3
+	rm -f slap.1
+
+distclean:	clean
+	rm -f makefile .makefile.*
+
+install:	slap slap.1 slapf.bsd slapf.svr4 slapf.svr3
+	tools/mktree			$(INSTALL_DIR)/bin
+	tools/finst -m 555 slap		$(INSTALL_DIR)/bin/slap
+	tools/mktree			$(INSTALL_DIR)/man/man1
+	tools/finst -m 555 slap.1	$(INSTALL_DIR)/man/man1/slap.1
+	-$(MAKEWHATIS)			$(INSTALL_DIR)/man
+	tools/mktree			$(INSTALL_DIR)/lib/slapfonts
+	tools/finst -m 444 fonts/*.pro	$(INSTALL_DIR)/lib/slapfonts
+	tools/finst -m 444 fonts/*.plus	$(INSTALL_DIR)/lib/slapfonts
+	tools/finst -m 444 slapf.svr4	$(INSTALL_DIR)/lib/slapf.svr4
+	tools/finst -m 444 slapf.bsd	$(INSTALL_DIR)/lib/slapf.bsd
+	tools/finst -m 444 slapf.svr3	$(INSTALL_DIR)/lib/slapf.svr3
+
+# dev-kit programs:
+sdk:	makefont
+plato:	identity.c
+	 $(XACC) -o plato $(CFLAGS) $(POSIX1_TERMIOS_EXTENSIONS) -DDEBUG identity.c
+
+# Secondary Targets:
+#
+COMOBJ=render.o loadfont.o dropfont.o chekfont.o session.o sig.o port.o identity.o
+DRIVERS=glue.o slplus.o slpro.o mbmd.o
+
+slap:	slap.o $(COMOBJ) $(DRIVERS)
+	$(XACC) -o slap slap.o $(COMOBJ) $(DRIVERS) $(CLIBS)
+
+makefont:	makefont.o chekfont.o \
+		savefont.o loadfont.o dropfont.o dumpfont.o
+	$(ACC) -o makefont makefont.o chekfont.o \
+		savefont.o loadfont.o dropfont.o dumpfont.o $(CLIBS)
+
+slapf.svr4:	svr4.pi
+	sed -e 's:INSTALL_DIR=.*:INSTALL_DIR=$(INSTALL_DIR):' <svr4.pi >slapf.svr4
+
+slapf.bsd:	bsd.pi
+	sed -e 's:INSTALL_DIR=.*:INSTALL_DIR=$(INSTALL_DIR):' <bsd.pi >slapf.bsd
+
+slapf.svr3:	svr3.pi
+	sed -e 's:INSTALL_DIR=.*:INSTALL_DIR=$(INSTALL_DIR):' <svr3.pi >slapf.svr3
+
+slap.o:	slap.c slap.h mjsfont.h 
+	$(XACC) -c $(CFLAGS) $(STRICT_POSIX1) slap.c
+
+identity.o:	identity.c
+	$(XACC) -c $(CFLAGS) $(POSIX1_TERMIOS_EXTENSIONS) identity.c
+
+glue.o:	glue.c slap.h
+	$(XACC) -c $(CFLAGS) $(STRICT_POSIX1) glue.c
+
+slplus.o:	slplus.c slap.h
+	$(XACC) -c $(CFLAGS) $(STRICT_POSIX1) slplus.c
+
+slpro.o:	slpro.c slap.h
+	$(XACC) -c $(CFLAGS) $(POSIX1_TERMIOS_EXTENSIONS) slpro.c
+
+mbmd.o:	mbmd.c slap.h
+	$(XACC) -c $(CFLAGS) $(STRICT_POSIX1) mbmd.c
+
+render.o:	render.c slap.h mjsfont.h
+	$(XACC) -c $(CFLAGS) $(STRICT_POSIX1) render.c
+
+session.o:	session.c slap.h
+	$(XACC) -c $(CFLAGS) $(STRICT_POSIX1) session.c
+
+port.o:	port.c port.h slap.h
+	$(XACC) -c $(CFLAGS) $(POSIX1_TERMIOS_EXTENSIONS) port.c
+
+sig.o:	sig.c slap.h
+	$(XACC) -c $(CFLAGS) $(STRICT_POSIX1) sig.c
+
+loadfont.o:	loadfont.c mjsfont.h
+	$(ACC) -c $(CFLAGS) loadfont.c
+
+dropfont.o:	dropfont.c mjsfont.h
+	$(ACC) -c $(CFLAGS) dropfont.c
+
+savefont.o:	savefont.c mjsfont.h
+	$(ACC) -c $(CFLAGS) savefont.c
+
+dumpfont.o:	dumpfont.c mjsfont.h
+	$(ACC) -c $(CFLAGS) dumpfont.c
+
+chekfont.o:	chekfont.c mjsfont.h
+	$(ACC) -c $(CFLAGS) chekfont.c
+
+makefont.o:	makefont.c mjsfont.h
+	$(ACC) -c $(CFLAGS) makefont.c
+
+
+slap.1:	slap.ro
+	tools/prepman -o slap.1 slap.ro

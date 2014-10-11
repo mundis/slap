@@ -1,0 +1,19 @@
+# Generate an "INSTALL_DIR" makefile macro, from the named directory.
+# If no directory given, $HOME is assumed.
+# Makefile segment is printed to stdout, and equivalent environment variable
+# is set.
+
+INSTALL_DIR="${1:-$HOME}"
+
+echo "Setting installation parent directory to $INSTALL_DIR" 1>&2
+
+cat << EOT
+
+# Where are we to be installed?
+# (specify the top-level directory, not the "bin", "lib" or "man" subdirectory)
+#
+INSTALL_DIR=$INSTALL_DIR
+
+EOT
+
+export INSTALL_DIR

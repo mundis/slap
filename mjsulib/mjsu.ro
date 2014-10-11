@@ -1,0 +1,266 @@
+'\" t
+.\" MJS Portable C Library
+.\" Module: introduction to the MJSulib API
+.\"
+.\" Copyright (c) 1999 Mike Spooner
+.\"----------------------------------------------------------------------
+.\" This program is free software; you can redistribute it and/or modify
+.\" it under the terms of the GNU General Public License as published by
+.\" the Free Software Foundation; either version 2 of the License, or
+.\" (at your option) any later version.
+.\"
+.\" This program is distributed in the hope that it will be useful,
+.\" but WITHOUT ANY WARRANTY; without even the implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+.\" GNU General Public License for more details.
+.\"
+.\" You should have received a copy of the GNU General Public License
+.\" along with this program; if not, write to the Free Software
+.\" Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+.\"----------------------------------------------------------------------
+.TD
+.TH mjsu @LF 17jun2013 "MJSulib"
+.SH NAME
+mjsu \- introduction to the MJSulib API
+.SH SYNOPSIS
+#include "mjsu.h"
+.SH DESCRIPTION
+MJSulib is a library of utility functions for ANSI C programs.
+It consists of
+a compiled function-library (called \fBlibmjsu.a\fP on UNIX systems) and
+the header-file \fBmjsu.h\fP.
+.LP
+The library and header-file are written in standard ANSI C;
+ancient "K&R"-flavour C compilers will
+.u
+not
+be able to compile the library or
+any module that uses MJSulib facilities.
+.LP
+The header-file defines data-types, structures, symbolic constants and
+enumeration constants;
+and provides explicit full prototype declarations for the API functions.
+It should be explicitly #included by all C modules that use MJSulib
+facilities.
+.LP
+.SS "Namespace"
+All symbols (functions, data-types, structures, enumeration 
+and symbolic constants, macros) defined by MJSulib have canonical
+names prefixed with "\fBmjs_\fP". For convenience, and to make
+program code more readable,
+shorthand aliases
+are provided so that eg: \fBmjs_remark()\fP can be referred to as just
+\fBremark(@LF)\fP,
+or \fBmjs_BOOL\fP as just \fBBOOL\fP.
+.LP
+If a program using the library defines it's own symbols that
+collide with the MJSulib
+shorthand alias names, the aliases can be selectively turned off in
+the affected program modules by defining one or more of the following
+preprocessor symbols
+.u
+before
+#including \fBmjsu.h\fP:
+.LP
+.RS
+.IP "MJS_TYPES" 20
+hides the type-name aliases.
+.IP "MJS_FUNCTIONS" 20
+hides the function-name aliases.
+.IP "MJS_CONSTANTS" 20
+hides the alias names of constants.
+.RE
+.LP
+Although the shorthand aliases are implemented as C preprocessor macros,
+all the normal C semantics
+are preserved: you can still take the address of a function,
+type-casts behave identically, and there are no extra syntactic constraints.
+Significantly, the addresses of the canonical function and its' alias
+(eg: \fBmjs_remark\fP() and \fBremark\fP())
+are identical and can be used interchangeably in any pointer comparisons,
+pointer assignments, etc.
+.LP
+In the remainder of this document, and in all the other MJSulib manpages,
+the short names are used.
+.LP
+.SH "DATA TYPES"
+The library uses several abstract data-types. Most are simply aliases for
+standard C data types, but named to indicate specific intended usage.
+.LP
+Note than although CHAR, TINY (or UTINY) and BYTE may be the same size
+in many compilation environments, their names are used to indicate
+a specific usage, eg: UTINY represents small positive integer values,
+.ul
+not
+character data, and vice versa.
+.LP
+.SS "Numeric Data Types"
+The minimum and maximum values documented here for each type are not a
+specification of the actual size or format of data so declared: the
+actual compiler-imposed ranges may be larger. The ranges documented
+here, however, are the maximum that portable programs can rely on.
+.LP
+Even if your personal favourite C compiler
+allows you to store truly massive values in
+a USHORT, other C compilers do not. And if your hardware vendor is
+crazy enough to provide a machine that can address 9-bit or 10-bit bytes
+(eg: Honeywell DPS and DEC PDP-10), remember
+that other manufacturers are not so generous.
+.LP
+Thus you should always restrict your use of these
+types to the ranges or uses
+documented here.
+.LP
+.RS
+.IP TINY 10
+numeric integer values from -128 to 127 inclusive.
+.IP UTINY 10
+numeric integer values from 0 to 255.
+.IP SHORT 10
+numeric integer values from -32768 to 32767 inclusive.
+.IP USHORT 10
+numeric integer values from 0 to 65535 inclusive.
+.IP LONG 10
+numeric integer values from -2147483648 to 2147483647 inclusive.
+.IP ULONG 10
+numeric integer values from 0 to 4294967295 inclusive.
+.IP INT 10
+numeric integer,
+usually needed only to interface with other (less-portable) APIs.
+.IP UINT 10
+numeric integer that can index even the largest declarable C array.
+Also often needed to interface with other (less-portable) APIs.
+.IP SINGLE 10
+single-precision floating-point values.
+.IP DOUBLE 10
+double-precision floating-point values.
+.RE
+.LP
+NOTE: SINGLE and DOUBLE do not have any exact portable definition of
+precision, range, representation, etc. - they are included simply
+for completeness,
+as aliases of the standard C types \fBfloat\fP and \fBdouble\fP respectively.
+.LP
+.SS "Enumerated Data Types"
+.LP
+.RS
+.IP BOOL 10
+used to represent the boolean values YES, NO, TRUE or FALSE. These
+enumeration constants are encoded so that C conditional statements of the form:
+.nf
+
+	if (shall_i == YES)
+		do_it();
+	else
+		dont_do_it();
+
+.fi
+behave as you would intuitively expect.
+.RE
+.LP
+.SS "Other Data Types"
+.LP
+.RS
+.IP VOID 14
+is used to represent "no data" or "data of unspecified type".
+.IP CHAR 14
+is used to hold (8-bit) text character-codes.
+.IP BYTE 14
+an octet (8 bits) of opaque data.
+.IP MBITMAP 14
+represents an in-memory bitmap, see \fBmbm(4)\fP.
+.IP TAGMATCH 14
+used in pattern-matching, see \fBamatch(3)\fP.
+.RE
+.LP
+.SH "SYMBOLIC CONSTANTS"
+Both of the following symbols are really private symbols, not part of the
+API proper. You should not rely on the existance of these symbols as they
+are likely to be removed in future versions.
+.LP
+.RS
+.IP "MBM_VERSION" 16
+the integer file-format version-number for MBITMAPs stored in external files,
+see \fBmbm(4)\fP.
+.IP "MBM_MAGIC" 16
+the string which appears at the beginning of all MBITMAPs when stored
+in external files,
+see \fBmbm(4)\fP.
+.RE
+.LP
+.SH "FUNCTIONS AND FILE-FORMATS"
+.LP
+.RS
+.IP "amatch(@LF)" 14
+look for anchored match of regular expression
+.IP "cpystr(@LF)" 14
+copy multiple strings
+.IP "error(@LF)" 14
+print formatted error message and exit
+.IP "getflags(@LF)" 14
+collect flag arguments from command-line
+.IP "lstol(@LF)" 14
+convert 32-bit quantum from LSB-first into native byte-order
+.IP "lstos(@LF)" 14
+convert 16-bit quantum from LSB-first into native byte-order
+.IP "ltols(@LF)" 14
+convert 32-bit quantum from native into LSB-first byte-order
+.IP "match(@LF)" 14
+match a regular expression
+.IP "mbm(@FF)" 14
+format of MBITMAP files and structures
+.IP "mbm_bits(@LF)" 14
+bitmap manipulations
+.IP "mbm_load(@LF)" 14
+load a bitmap from a file
+.IP "mbm_mem(@LF)" 14
+allocate or deallocate bitmaps on the heap
+.IP "mbm_save(@LF)" 14
+save a bitmap to a file
+.IP "mbm_size(@LF)" 14
+return the height or width of a bitmap
+.IP "mem_buy(@LF)" 14
+(re)allocate storage space on the heap, optionally failing hard
+.IP "mem_free(@LF)" 14
+deallocate storage space on the heap, returning a sentinel
+.IP "pattern(@LF)" 14
+build a regular expression pattern
+.IP "remark(@LF)" 14
+print formatted notification message
+.IP "rtw_short_hash(@LF)" 14
+generate unsigned-short hash value for an arbitrary key
+.IP "rtw_long_hash(@LF)" 14
+generate unsigned-long hash value for an arbitrary key
+.IP "stols(@LF)" 14
+convert 16-bit quantum from native into LSB-first byte-order
+.IP "strhash(@LF)" 14
+generate unsigned-short hash value for a string
+.IP "str_dup(@LF)" 14
+duplicate a string onto the heap
+.IP "strtos(@LF)" 14
+convert numeric string to short integer, with range checking
+.IP "usage(@LF)" 14
+print formatted usage message and exit
+.IP "vec_buy(@LF)" 14
+create or extend a vector of strings
+.IP "vec_dup(@LF)" 14
+duplicate a vector of strings
+.IP "vec_free(@LF)" 14
+deallocate a vector of strings
+.IP "warning(@LF)" 14
+print formatted notification message
+.IP "whatami(@LF)" 14
+return the name of the calling process
+.RE
+.LP
+.SH AVAILABILITY
+MJSulib is written in C,
+conforming to ANSI X3.159-1989 (hosted program environment).
+.LP
+Any platform
+providing a standard ANSI C compilation environment and execution environment(s)
+should be able to compile and use MJSulib.
+.LP
+However, the automatic makefile-generator only works on UNIX or similar
+systems. MJSulib has been built for some other platforms, using
+hand-constructed makefiles.

@@ -1,0 +1,72 @@
+ [Image] [up] [next]            [Image]            [Image] [Image] [Image]
+
+                          What is a Smart Label
+                                Printer ®?
+
+                              What is slap?
+
+                        Why do I need slap to use
+                               the printer?
+
+----------------------------------------------------------------------------
+
+What is a Smart Label Printer ® ?
+
+Seiko Instruments manufacture a range of printers designed especially for
+printing stick-on labels. These printers are vastly superior to
+general-purpose printers (laser, inkjet or dotmatrix) for producing labels:
+   * no toner or ink needed
+   * print labels one-at-a-time or
+     hundreds-at-a-time with no waste!
+   * very quiet and very small: suitable for
+     desktop use
+   * use very little power
+   * very simple to load labels (no messing with   [picture of an SLP-220]
+     tractors again)
+   * no need to replace very expensive
+     fusing-rollers or print-heads that have
+     become "glued-up".
+   * no danger of the labels being shredded by
+     the printer!
+
+Visit Seiko Instruments for more information.
+
+Note: "Smart Label Printer" is a registered trademark of Seiko Instruments
+USA Inc.
+
+----------------------------------------------------------------------------
+
+What is slap?
+
+slap is a UNIX program that prints labels on a Smart Label Printer. Typical
+applications include:
+
+   * address labels
+   * labels for audio cassettes, CDs, videos
+   * diskette labels
+   * labels for file-folders, notebooks
+   * ID badges
+   * labels, labels, labels - use your imagination...
+
+slap is a command-line program - a GUI version is planned for the future.
+Currently it only prints plain text, but you can choose any of several
+typefaces - it is distributed with a set of 16 bitmap fonts, each in 6
+point-sizes.
+
+slap can automatically detect which model of SmartLabel printer you are
+using, and adapts accordingly.
+
+----------------------------------------------------------------------------
+
+Why do I need slap to use a Smart Label Printer?
+
+The Smart Label Printers are bitmap printers - unlike most printers, they do
+not themselves convert character data into a pattern of dots. That is a job
+for software running on the host computer.
+
+These printers also use special-purpose communication- and command-protocols
+- which have to be handled by software running on the host computer.
+
+Under UNIX, slap does both these jobs - see the manpage.
+----------------------------------------------------------------------------
+ [Image] [up] [next]                [Image]              [home]  [mail me]

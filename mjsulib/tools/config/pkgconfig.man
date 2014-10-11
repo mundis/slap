@@ -1,0 +1,660 @@
+
+
+
+User Commands                                       pkg-config(1)
+
+
+
+NAME
+     pkg-config  -  return  meta  information   about   installed
+     libraries
+
+SYNOPSIS
+     pkg-config  [--modversion]  [--help]  [--print-errors]   [--
+     silence-errors]   [--cflags]  [--libs]  [--libs-only-L]  [--
+     libs-only-l]  [--cflags-only-I]   [--variable=_v_a_r_i_a_b_l_e__n_a_m_e]
+     [--define-variable=_v_a_r_i_a_b_l_e__n_a_m_e=_v_a_r_i_a_b_l_e__v_a_l_u_e]         [--
+     uninstalled]  [--exists]   [--atleast-version=_v_e_r_s_i_o_n]   [--
+     exact-version=_v_e_r_s_i_o_n] [--max-version=_v_e_r_s_i_o_n] [_l_i_b_r_a_r_i_e_s]
+
+DESCRIPTION
+     pkg-config retrieves information about  installed  libraries
+     in  the  system. pkg-config is typically used to compile and
+     link against one or more libraries.  The  following  example
+     shows how to use pkg-config in a Makefile:
+
+     program: program.c
+           cc program.c `pkg-config --cflags --libs gnomeui`
+
+
+     pkg-config retrieves information about packages from special
+     metadata  files. These files have the same name as the pack-
+     age, with the extension .pc. By default, pkg-config looks in
+     the  directory  /usr/lib/pkgconfig  for these files. It also
+     looks  in  the  colon-separated  (on   Windows,   semicolon-
+     separated)    list   of   directories   specified   by   the
+     PKG_CONFIG_PATH environment variable.
+
+     The package name specified on the pkg-config command line is
+     defined to be the name of the metadata file, without the .pc
+     extension. If a library can install multiple versions simul-
+     taneously, it must give each version its own name. For exam-
+     ple, GTK 1.2 might have the package name gtk+ while GTK  2.0
+     has the package name gtk+-2.0.
+
+EXTENDED DESCRIPTION
+     A .pc file has two kinds of line:
+
+       +o  Keyword lines start with a keyword and a colon.
+
+       +o  Variable definitions start with an alphanumeric  string
+          and an equals sign.
+
+
+     Keywords are defined in advance and have special meaning  to
+     pkg-config.   Variables do not have special meaning, you can
+     specify any variables that  you  wish.  However,  users  may
+     expect to retrieve the usual directory name variables.
+
+
+
+
+
+SunOS 5.10          Last change: 15 Jul 2004                    1
+
+
+
+
+
+
+User Commands                                       pkg-config(1)
+
+
+
+     Note that variable references are written "${foo}"; you  can
+     escape literal "${" as "$${".
+
+     pkg-config supports the following keywords:
+
+     Name                    A human-readable name for the  pack-
+                             age.  Note  that  it is not the name
+                             passed as an argument to pkg-config.
+
+
+
+     Description             A brief description of the package.
+
+
+
+     Version                 The  most-specific-possible  package
+                             version string.
+
+
+
+     Requires                A comma-separated list  of  packages
+                             that  are  required by your package.
+                             Flags from dependent  packages  will
+                             be  merged  in to the flags reported
+                             for your  package.  Optionally,  you
+                             can   specify  the  version  of  the
+                             required package (using  the  opera-
+                             tors  =, <, >, >=, <=). Specifying a
+                             version allows pkg-config to perform
+                             extra  sanity  checks.  You may only
+                             mention the same package once on the
+                             Requires:  line. If the version of a
+                             package is not specified,  any  ver-
+                             sion will be used with no checking.
+
+
+
+     Conflicts               Optional.  Allows pkg-config to per-
+                             form  additional sanity checks, pri-
+                             marily to detect broken user instal-
+                             lations.  The  syntax is the same as
+                             Requires: except that you  can  list
+                             the same package more than once, for
+                             example "foobar =  1.2.3,  foobar  =
+                             1.2.5,  foobar  >= 1.3", if you have
+                             reason to do so. If a version is not
+                             specified,  your  package  conflicts
+                             with all versions of  the  mentioned
+                             package. If a user tries to use your
+                             package and a conflicting package at
+                             the same time, pkg-config complains.
+
+
+
+
+SunOS 5.10          Last change: 15 Jul 2004                    2
+
+
+
+
+
+
+User Commands                                       pkg-config(1)
+
+
+
+     Libs                    The  link  flags  specific  to  your
+                             package.  Do  not  add any flags for
+                             required packages,  pkg-config  adds
+                             these automatically.
+
+
+
+     Cflags                  The compile flags specific  to  your
+                             package.  Do  not  add any flags for
+                             required packages,  pkg-config  adds
+                             these automatically.
+
+
+
+     See the EXAMPLES section below for a sample .pc file.
+
+  Windows Specialities
+     If a .pc file  is  found  in  a  directory  that  ends  with
+     /lib/pkgconfig, the prefix for that package is assumed to be
+     the grandparent of the  directory  in  which  the  file  was
+     found,  and  the prefix variable is overridden for that file
+     accordingly.
+
+     In addition to the PKG_CONFIG_PATH environment variable, the
+     Registry         keys        HKEY_CURRENT_USER\Software\pkg-
+     config\PKG_CONFIG_PATH and  HKEY_LOCAL_MACHINE\Software\pkg-
+     config\PKG_CONFIG_PATH can be used to specify directories to
+     search for .pc files. Each string value  in  these  keys  is
+     treated as a directory in which to search for .pc files.
+
+  autoconf Macros
+     PKG_CHECK_MODULES(_v_a_r_i_a_b_l_e_b_a_s_e,_m_o_d_u_l_e_l_i_s_t[,_a_c_t_i_o_n-_i_f-
+     _f_o_u_n_d,[_a_c_t_i_o_n-_i_f-_n_o_t-_f_o_u_n_d]])
+
+     The macro PKG_CHECK_MODULES can be used in  configure.in  to
+     check whether modules exist, as shown in the following exam-
+     ple:
+
+     PKG_CHECK_MODULES(MYSTUFF, gtk+-2.0 >= 1.3.5 libxml = 1.8.4)
+
+     In this example, the MYSTUFF_LIBS and MYSTUFF_CFLAGS substi-
+     tution  variables  are set to the libs and cflags values for
+     the given module list. If a module is  missing  or  has  the
+     wrong  version,  by default configure will abort with a mes-
+     sage. To replace the default action, specify  an  _A_C_T_I_O_N-_I_F-
+     _N_O_T-_F_O_U_N_D.   PKG_CHECK_MODULES will not print any error mes-
+     sages if you specify your own _A_C_T_I_O_N-_I_F-_N_O_T-_F_O_U_N_D.  However,
+     it  will  set the variable MYSTUFF_PKG_ERRORS, which you can
+     use to find out what went wrong.
+
+  Compiling 64-Bit Binaries
+
+
+
+
+SunOS 5.10          Last change: 15 Jul 2004                    3
+
+
+
+
+
+
+User Commands                                       pkg-config(1)
+
+
+
+     To compile 64-bit binaries,  pkg-config  must  use  metadata
+     files  that  specify  the flags for the 64-bit libraries. To
+     ensure that pkg-config can find the metadata files  for  64-
+     bit  libraries, set the PKG_CONFIG_PATH environment variable
+     to /usr/lib/64/pkgconfig/ when compiling 64-bit software.
+
+OPTIONS
+     The following options are supported:
+
+     --atleast-version=_v_e_r_s_i_o_n
+
+         See the entry for the --exists option.
+
+
+
+     --cflags
+
+         Prints pre-processor and compile flags required to  com-
+         pile  the  packages on the command line, including flags
+         for all their dependencies. Flags  are  "compressed"  so
+         that  each  identical flag appears only once. pkg-config
+         exits with a nonzero code if it cannot find metadata for
+         one or more of the packages on the command line.
+
+
+
+     --define-variable=_v_a_r_i_a_b_l_e_n_a_m_e=_v_a_r_i_a_b_l_e_v_a_l_u_e
+
+         Sets a global value for a variable, overriding the value
+         in any example. For example:
+
+
+         $ pkg-config --print-errors --define-variable=prefix=/foo \
+          --variable=prefix glib-2.0 /foo
+
+
+
+     --dont-define-prefix
+
+         Available only on Windows.  This  option  prevents  pkg-
+         config  from  automatically trying to override the value
+         of the variable prefix in each .pc file.
+
+
+
+     --errors-to-stdout
+
+         If printing errors, print them to stdout rather than the
+         default stderr.
+
+
+
+
+
+
+SunOS 5.10          Last change: 15 Jul 2004                    4
+
+
+
+
+
+
+User Commands                                       pkg-config(1)
+
+
+
+     --exact-version=_v_e_r_s_i_o_n
+
+         See the entry for the --exists option.
+
+
+
+     --exists
+
+         The   --exists,   --atleast-version=_v_e_r_s_i_o_n,    --exact-
+         version=_v_e_r_s_i_o_n,  and --max-version=_v_e_r_s_i_o_n options test
+         whether the packages on the command line  are  known  to
+         pkg-config, and optionally whether the version number of
+         a package meets  certain  contraints.  If  all  packages
+         exist  and  meet the specified version constraints, pkg-
+         config exits successfully.  Otherwise, pkg-config  exits
+         unsuccessfully.   Rather  than  using  the  version-test
+         options, you can simply give a version constraint  after
+         each package name, as shown in the following example:
+
+
+         $ pkg-config --exists 'glib-2.0 >= 1.3.4 libxml = 1.8.3'
+
+         Remember to use the --print-errors option if you want to
+         display error messages.
+
+
+
+     --help
+
+          Displays a help message and terminates.
+
+
+
+     --libs
+
+         Identical to --cflags option but only  prints  the  link
+         flags.  Duplicate  flags  are merged, maintaining proper
+         ordering, and flags for dependencies are included in the
+         output.
+
+
+
+     --libs-only-L
+
+         Prints the -L/-R part of the --libs option. That is,  it
+         defines  the  library  search  path but does not specify
+         which libraries to link with.
+
+
+
+     --libs-only-l
+
+
+
+
+SunOS 5.10          Last change: 15 Jul 2004                    5
+
+
+
+
+
+
+User Commands                                       pkg-config(1)
+
+
+
+         Prints  the  -l  part  of  the  --libs  option  for  the
+         libraries  specified  on the command line. Note that the
+         union of the --libs-only-l and --libs-only-L options may
+         be  smaller than the --libs option, due to flags such as
+         -rdynamic.
+
+
+
+     --max-version=_v_e_r_s_i_o_n
+
+         See the entry for the --exists option.
+
+
+
+     --modversion
+
+         Requests that the version information of  the  libraries
+         specified  on  the  command  line  be displayed. If pkg-
+         config can find all of  the  libraries  on  the  command
+         line,  each  library's  version  string  is  printed  to
+         stdout, one version per line. In  this  case  pkg-config
+         exits successfully. If one or more libraries is unknown,
+         pkg-config exits with a nonzero code, and  the  contents
+         of stdout are undefined.
+
+
+
+     --msvc-syntax
+
+         Available only on Windows. This option causes pkg-config
+         to  output -l and -L flags in the form recognized by the
+         Microsoft Visual C++ command-line compiler, cl, as  fol-
+         lows:
+
+           +o  Prints     /libpath:_x/_s_o_m_e/_p_a_t_h     instead      of
+              -Lx:/_s_o_m_e/_p_a_t_h
+
+           +o  Prints foo.lib instead of -lfoo
+
+
+         Note that the --libs output consists of  flags  for  the
+         linker,  and  should  be  placed  on the cl command line
+         after a /link switch.
+
+
+
+     --prefix-variable=_p_r_e_f_i_x
+
+         Available only on Windows. This option sets the name  of
+         the  variable  that  pkg-config  automatically  sets  as
+         described above.
+
+
+
+
+SunOS 5.10          Last change: 15 Jul 2004                    6
+
+
+
+
+
+
+User Commands                                       pkg-config(1)
+
+
+
+     --print-errors
+
+         Displays an error if one or more of the modules  on  the
+         command  line,  or their dependencies, are not found, or
+         if an error occurs in parsing. This option can  be  used
+         alone  to just print errors encountered locating modules
+         on  the  command  line,  or  with  other  options.   The
+         PKG_CONFIG_DEBUG_SPEW   environment  variable  overrides
+         this option.
+
+
+
+     --silence-errors
+
+         Does not display an error if one or more of the  modules
+         on  the  command  line,  or  their dependencies, are not
+         found, or if an error occurs in parsing. With  predicate
+         options  such  as  --exists, pkg-config runs silently by
+         default, because it is usually used in scripts that want
+         to  control  what  is output. This option is only useful
+         with options that print errors by default,  such  as  --
+         cflags   or   --modversion.   The  PKG_CONFIG_DEBUG_SPEW
+         environment variable overrides this option.
+
+
+
+     --uninstalled
+
+         Normally, if you request the package foo and the package
+         foo-uninstalled exists, pkg-config will prefer the unin-
+         stalled variant. This allows compilation/linking against
+         uninstalled  packages.  If you specify the --uninstalled
+         option, pkg-config returns  successfully  if  any  unin-
+         stalled  packages  are being used. Otherwise, pkg-config
+         fails.  The  PKG_CONFIG_DISABLE_UNINSTALLED  environment
+         variable  prevents  pkg-config  from implicitly choosing
+         uninstalled          packages.           If          the
+         PKG_CONFIG_DISABLE_UNINSTALLED  variable  is  set, unin-
+         stalled packages are used only if you explicitly pass  a
+         name such as foo-uninstalled on the command line.
+
+
+
+     --variable=_v_a_r_i_a_b_l_e_n_a_m_e
+
+         Returns the value of a variable defined in  a  package's
+         .pc file. For example, most packages define the variable
+         prefix:
+
+
+         $ pkg-config --variable=prefix glib-2.0 /usr/
+
+
+
+
+SunOS 5.10          Last change: 15 Jul 2004                    7
+
+
+
+
+
+
+User Commands                                       pkg-config(1)
+
+
+
+ENVIRONMENT VARIABLES
+     See environ(5) for descriptions of environment variables.
+
+     PKG_CONFIG_ALLOW_SYSTEM_CFDLoAGnSot  strip  -I/usr/include  from
+                             cflags.
+
+
+
+     PKG_CONFIG_ALLOW_SYSTEM_LDIoBSnot strip -L/usr/lib from libs.
+
+
+
+     PKG_CONFIG_DEBUG_SPEW   If set, causes pkg-config  to  print
+                             all debugging information and report
+                             all errors.
+
+
+
+     PKG_CONFIG_DISABLE_UNINSTANLoLrEmDally, if you request the  pack-
+                             age   foo   and   the  package  foo-
+                             uninstalled    exists,    pkg-config
+                             prefers   the  uninstalled  variant.
+                             This   allows    compilation/linking
+                             against uninstalled packages. If the
+                             PKG_CONFIG_DISABLE_UNINSTALLED
+                             environment  variable  is  set, pkg-
+                             config prefers the  installed  vari-
+                             ant.
+
+
+
+     PKG_CONFIG_PATH         A   colon-separated   (on   Windows,
+                             semicolon-separated)  list of direc-
+                             tories to search for .pc files.  The
+                             default directory is always searched
+                             after searching the  path  specified
+                             by   PKG_CONFIG_PATH.   The  default
+                             value    of    PKG_CONFIG_PATH    is
+                             _l_i_b_d_i_r/pkgconfig,  where  _l_i_b_d_i_r  is
+                             the lib directory  where  pkg-config
+                             is  installed.  On  Solaris systems,
+                             _l_i_b_d_i_r is /usr/lib.
+
+
+
+     PKG_CONFIG_TOP_BUILD_DIRSets the value of the magic variable
+                             pc_top_builddir, which may appear in
+                             .pc files. If this environment vari-
+                             able  is  not set, the default value
+                             '$(top_builddir)'  is   used.    The
+                             PKG_CONFIG_TOP_BUILD_DIR    variable
+                             should refer to the top builddir  of
+
+
+
+SunOS 5.10          Last change: 15 Jul 2004                    8
+
+
+
+
+
+
+User Commands                                       pkg-config(1)
+
+
+
+                             the  Makefile where the compile/link
+                             flags  reported  by  pkg-config  are
+                             used.  The  PKG_CONFIG_TOP_BUILD_DIR
+                             variable   is   only    used    when
+                             compiling/linking  against a package
+                             that has not yet been installed.
+
+
+
+EXAMPLES
+     Example 1: Example .pc File
+
+     Here is an example .pc file:
+
+     # This is a comment
+     prefix=/usr # this defines a variable
+     exec_prefix=${prefix} # defining another variable in terms of the first
+     libdir=${exec_prefix}/lib
+     includedir=${prefix}/include
+
+     Name: GObject# human-readable name
+     Description: Object/type system for GLib # human-readable description
+     Version: 1.3.1
+     Requires: glib-2.0 = 1.3.1
+     Conflicts: foobar <= 4.5
+     Libs: -L${libdir} -lgobject-1.3
+     Cflags: -I${includedir}/glib-2.0 -I${libdir}/glib/include
+
+
+
+     Example 2: Adding a Library to the Set of Packages Known  to
+     pkg-config
+
+     To add a library to the set of packages known to pkg-config,
+     you  must  install  the  library-specific  .pc  file  in the
+     /usr/lib/pkgconfig directory.
+
+     If the .pc file does not exist, generate the file by running
+     the  configure  command.  Generating  the  file  in this way
+     ensures that the prefix and other variables are set  to  the
+     correct values.
+
+     Example 3:  Getting  the  Compile  Flags  Required  for  the
+     gnomeui Package
+
+     example% pkg-config --cflags libgnomeui-2.0
+
+FILES
+     The following files are used by this application:
+
+     /usr/bin/pkg-config     Executable  for  installed   library
+                             helper script
+
+
+
+SunOS 5.10          Last change: 15 Jul 2004                    9
+
+
+
+
+
+
+User Commands                                       pkg-config(1)
+
+
+
+ATTRIBUTES
+     See attributes(5) for descriptions of the  following  attri-
+     butes:
+
+     ____________________________________________________________
+    |       ATTRIBUTE TYPE        |       ATTRIBUTE VALUE       |
+    |______________________________|______________________________|
+    | Availability                | SUNWgnome-common-devel      |
+    |______________________________|______________________________|
+    | Interface stability         | External                    |
+    |______________________________|______________________________|
+
+
+SEE ALSO
+     Latest version of the _G_N_O_M_E  _D_e_s_k_t_o_p  _U_s_e_r  _G_u_i_d_e  for  your
+     platform.
+
+NOTES
+     Updated by Brian Cameron, Sun Microsystems Inc., 2003, 2004.
+     Written  by  James Henstridge, Martijn van Beers, Havoc Pen-
+     nington, Tim Janik, Owen Taylor, Raja  Harinath,  Miguel  de
+     Icaza.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+SunOS 5.10          Last change: 15 Jul 2004                   10
+
+
+

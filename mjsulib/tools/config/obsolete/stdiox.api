@@ -1,0 +1,245 @@
+#!/bin/sh
+# @(#)stdioext.api	2.0	27sep2004 MJS
+#
+# NOTE: use of this configure module will prevent building backwards-compatible
+# binaries ie: configuring on SunOS 5.8 for execution on SunOS 5.3 would
+# not work. As "stdio_ext.h" is not a Sun-comitted interface, you may also
+# not get forwards-compatibility either!
+# 
+# SO DO NOT USE "stdio_ext.h" facilities unless you want to limit binary
+# deployments to SunOS 5.8 through SunOS 5.10 (at the time of writing).
+#
+#desc: Determines whether the SunOS-5.8-style "stdio_ext.h" API is available,
+#desc: in particular the __fsetlocking() function.
+#desc:
+#desc: 'Configure' variables: CONF_HAVE_STDIOX
+#desc:
+#desc: The equivalent makefile variables (if any) have the same names without
+#desc: the leading 'CONF_'.
+
+#out: relevant "makefile" variable-definitions.
+
+
+##############################################################################
+# NOTICE: exit codes must be as follows:
+#
+#	0:	values determined, validated and set
+#	1:	values determined, but with warnings
+#	2:	values could not be determined (dummy values have been set)
+#	3:	-cflags or -help was specified (thus values have not been set)
+#	4:	complete failure: could not even try to determine values
+##############################################################################
+
+
+###########################################################################
+#########      Boilerplate helper main program, do not edit!     ##########
+###########################################################################
+
+# first, generate my own basename, for use in help/diagnostic/other messages;
+# using a slow but extremely portable method...
+me="`echo \"$0\" | sed -e 's:.*/::'`"
+
+# now find the pathname of this script, using method portable to
+# all Bourne-compatible shells (even as far back as 7th Edition UNIX)...
+#
+case "$0" in
+/*)	# invoked by absolute pathname
+	my_full_pathname="$0"
+	;;
+*/*)	# invoked by partially-qualified relative pathname
+	# NOTE: must strip any leading "./" from $0...
+	my_full_pathname="`pwd`/`echo \"$0\" | sed -e 's:^\./::'`"
+	;;
+*)	# invoked by unqualified pathname or arg0 has been munged by invoker
+	dir="`pwd`"
+	if test -f "$dir/$me" && test -r "$dir/$me" ; then
+		# invoked by unqualified pathname
+		my_full_pathname="$dir/$me"
+		my_full_dirname="$dir"
+	else
+		# arg0 has been munged, must search dirs in $PATH
+		oldIFS="$IFS"
+		IFS=":"
+		for dir in $PATH ; do
+			if test -f "$dir/$me" && test -r "$dir/$me" ; then
+				my_full_pathname="$dir/$me"
+				my_full_dirname="$dir"
+			fi
+		done
+		IFS="$oldIFS"
+	fi
+	;;
+esac
+test -z "$my_full_dirname" && \
+	my_full_dirname="`echo \"$my_full_pathname\" | sed -e 's:/[^/]*$::'`"
+
+# now, set PATH to locate 'Configure' utilities, as I may need them...
+PATH="${my_full_dirname}:${my_full_dirname}/..:${PATH}"
+
+# now determine what to do based on flags...
+#
+t='	'
+case "$1" in
+
+-cflags)
+	exec 1>&2
+	state=''
+	while read key text ; do
+		case "$key" in
+		'#opt:')
+			state=1
+			case "$text" in
+			-*)
+				echo "${t}$text"
+				;;
+			*)
+				echo "${t}${t}$text"
+				;;
+			esac
+			;;
+		*)
+			test -n "$state" && break
+			;;
+		esac
+	done <"$my_full_pathname"
+	exit 3
+	;;
+-configure)
+	# handled below...
+	;;
+-help|--help|*)
+	exec 1>&2
+	echo "${me} is a 'Configure' helper."
+	echo ''
+	echo "usage: $me [ -help | -cflags | -configure ]" \
+		"[ <'Configure' options> ]"
+	echo ''
+	state=''
+	while read key text ; do
+		case "$key" in
+		'#desc:')
+			state=1
+			echo "$text"
+			;;
+		*)
+			test -n "$state" && break
+			;;
+		esac
+	done <"$my_full_pathname"
+	echo ''
+	echo 'Options:'
+	echo "$t"'-help   print full help on this module to stderr, and exit.'
+	echo "$t"'-cflags describe the 'Configure' command-line flags that'
+	echo "${t}$t"'this helper handles, to stderr, and exit.'
+	echo "$t"'-configure'
+	echo "${t}${t}process relevant 'Configure' command-line flags, probe the"
+	echo "${t}${t}the local system for relevant settings, set the relevant"
+	echo "${t}${t}'Configure' variables; and print, to stdout, any"
+	state=''
+	while read key text ; do
+		case "$key" in
+		'#out:')
+			state=1
+			echo "${t}${t}$text" 
+			;;
+		*)
+			test -n "$state" && break
+			;;
+		esac
+	done <"$my_full_pathname"
+	exec "$my_full_pathname" -cflags
+	exit 3	# paranoia
+	;;
+esac
+
+
+############################################################################
+#########	 module-specific '-configure' actions	  ############
+############################################################################
+
+# NOTE: 'Configure' variables *must* be set with the setvar program, to
+# ensure that other modules can see them.
+#
+shift || exit 4
+status=0
+
+if test -z "$CONF_HAVE_STDIOX" ; then
+
+	# locate an ANSI C compiler, if not already:
+	#
+	if test -z "$CONF_XACC" ; then
+		chain /tmp/$$.chain ansic.cmd -configure "$@" &&
+			. /tmp/$$.chain
+		rm -f /tmp/$$.chain
+	fi
+
+	# build a small ANSI C source file that uses "__fsetlocking()" facilities:
+	#
+	cat > /tmp/$$.c << EOT
+	#include <stdio.h>
+	#include <stdio_ext.h>
+	
+	int main(ac, av)
+		unsigned int ac;
+		char **av;
+		{
+		__fsetlocking(stdin, FSETLOCKING_BYCALLER);
+		__fsetlocking(stdout, FSETLOCKING_BYCALLER);
+		return (0);
+		}
+EOT
+
+	# a function to test compilation...
+	#
+	trycompile()
+		{
+		xxxxxxx="${1:?internal error - missing parameter to trycompile}"
+
+		# divert our stderr, in case the potential program
+		# is not there
+		exec 9>&2
+		exec 2>/dev/null
+
+		$* -o /tmp/$$.exe /tmp/$$.c >/dev/null 2>&1
+
+		# restore stderr
+		exec 2>&9
+
+		# Careful: some compilers do not give generated
+		# program files execute permissions!
+
+		if test -f /tmp/$$.exe && chmod +x /tmp/$$.exe &&
+				/tmp/$$.exe ; then
+			rm -f /tmp/$$.exe
+			return 0
+		fi
+		rm -f /tmp/$$.exe
+		return 1
+		}
+	
+	# Hunt for the API...
+	#
+	status=2	# until proven otherwise
+	if trycompile "$CONF_XACC" ; then
+		CONF_HAVE_STDIOX=1
+		echo "\"stdio_ext.h\" API: is available" 1>&2
+	else
+		echo "\"stdio_ext.h\" API: is not available" 1>&2
+	fi
+fi
+
+
+# emit makefile-segment to stdout:
+#
+cat <<EOT
+
+# are the SunOS-5.8-style "stdio_ext.h" API and __fsetlocking() available?:
+HAVE_STDIOX=$CONF_HAVE_STDIOX
+
+EOT
+
+# and set 'Configure' variables:
+#
+setvar CONF_HAVE_STDIOX "$CONF_HAVE_STDIOX"
+
+exit "$status"

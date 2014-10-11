@@ -1,0 +1,477 @@
+test -z "$capi_name" && exit 4
+test -z "$capi_desc" && exit 4
+
+if test -n "$status" ; then
+	exit "$status"
+else
+	status=1	# until proven otherwise
+fi
+
+oldIFS="$IFS"
+oldpwd="`pwd`"
+
+# force dynamic-linker maximum library-compatibility on Solaris:
+LD_NOVERSION=1
+export LD_NOVERSION
+
+# clear-down debugging-related dynamic-linker controls:
+# NOTE: some Bournish shells do not have "unset" command, so must use *both*
+# shell-var clearing-down methods, in the correct order!
+for ldv in FLAGS DEBUG PROFILE SIGNAL ; do
+	eval LD_${ldv}="''"
+	eval unset LD_${ldv}_64
+	eval LD_${ldv}_32="''"
+	eval unset LD_${ldv}_64
+	eval LD_${ldv}_64="''"
+	eval unset LD_${ldv}_64
+done 2>/dev/null
+
+# remember our original library-search-path setting:
+oldlibpath="${LD_LIBRARY_PATH-${LIBPATH-${SHLIB_PATH}}}"
+
+
+if mkdir /tmp/$$.capisearch && \
+		mv /tmp/$$.c /tmp/$$.capisearch/scooby.c ; then
+	sleep 0
+else
+	rm -rf /tmp/$$.*
+	exit 4
+fi
+
+# for each suitable *and available* C compiler type:
+test -z "$capi_clevels" && capi_clevels=89
+for level in $capi_clevels ; do
+	note.___ "==========================================================="
+	note.___ "trying C level [${level}]"
+
+	chain.___ /tmp/$$.cv c"$level"_cmd -configure "$@" && . /tmp/$$.cv
+	rm -f /tmp/$$.cv
+	eval capi_cc='$CONF_QUICK_C'"$level"
+	test -z "$capi_cc" && continue
+	test "$capi_cc" = "not found" && continue
+
+	cc="${capi_cc}"
+
+	#####################################################################
+	# if we have an API-config program for the right version of the API,
+	# use it to set the first-try compilation-flags...
+	# NOTE: we have to redistribute cflags ldflags libs because many
+	# such API-config programs have ldflags in libs or vice versa...
+	#####################################################################
+	try=''
+	trylist=''
+	if test -n "$capi_cfg_prog" ; then
+		case "$capi_cfg_prog" in
+		/*)	trylist="$capi_cfg_prog"
+			;;
+		*)	. "$my_full_dirname"/cmn_bin_dirs
+			dirs="$CONF_STDBINS"
+			dirs="$dirs:$PATH"
+			IFS=:
+			for d in $dirs ; do
+				IFS="$oldIFS"
+				##note.___ "dir [${d}]"
+				case "$d" in
+				/*)     # absolute
+					d="$d/"
+					;;
+				'.') # implicit $pwd, ignore
+					continue
+					;;
+				*)      # relative, make absolute
+					if test "$pwd" = / ; then
+ 						# See POSIX.1 Appendix B
+						d="/$d/"
+					else
+						d="$pwd/$d/"
+					fi
+					;;
+				esac
+				try="$d$capi_cfg_prog"
+				if test -n "$try" && test -f "$try" && \
+					test -x "$try" && \
+					"$try" --cflags </dev/null >/dev/null 2>&1 ; then
+					v="`$try --version 2>/dev/null`"
+					if test -n "$capi_version" ; then
+						vc="$v"
+					else
+						vc=''
+					fi
+					case "$vc" in
+					''$capi_version|'')	# allow empty
+						note.___ "found [ $try ] ($v)"
+						[ -n "$trylist" ] &&
+							trylist="$trylist "
+						trylist="${trylist}$try"
+						;;
+					*)
+						note.___ "skip [ $try ] ($v)"
+						sleep 0
+						;;
+					esac
+				fi
+			done
+			;;
+		esac
+		for try in $trylist ; do
+			note.___ "trying $try"
+			# compute list of (sub-)APIs supported, needed to
+			# pass to api-config program to get *all* libs...
+			state=''
+			for word in `$try --help 2>&1 | while read f1 f2 ; do
+						case "$f1" in
+						[Ll]ibraries:)
+							state=1
+							;;
+						*:)	state=''
+							;;
+						*)	[ -n "$state" ] && \
+								[ -n "$f1" ] &&\
+								echo "$f1"
+							;;
+						esac
+					done` ; do
+				subapis="${subapis+$subapis }$word"
+			done
+
+			# TODO +nodefaultrpath for recent HP-UX!!
+			# TODO link with +s for recent HP-UX!!
+
+			cflags="`$try --cflags $subapis 2>/dev/null`"
+			ldflags="`$try --ldflags $subapis 2>/dev/null`"
+			# split '--libs' output into ldflags+libs, and
+			# prune -R/-rpath/-runpath options...
+			# SPOOF: todo: strip -R* from ldflags too!
+			words="`$try --libs $subapis 2>/dev/null`"
+			mode=libs
+			libs=''
+			libpath="$oldlibpath"
+			for word in $words ; do
+				case "$mode" in
+				ldflags)
+					ldflags="${ldflags} $word"
+					if test -n "$word" ; then
+						if test -n "$libpath" ; then
+					       		libpath="${word}:$libpath"
+						else
+							libpath="$word"
+						fi
+					fi
+					mode=libs
+					;;
+				'')
+					if test -n "$word" ; then
+						if test -n "$libpath" ; then
+							libpath="${word}:$libpath"
+						else
+							libpath="$word"
+						fi
+					fi
+					mode=libs
+					continue
+					;;
+				esac
+				case "$word" in
+				-L*)	test -n "$ldflags" && \
+						ldflags="$ldflags "
+					ldflags="${ldflags}$word"
+					dir="`expr $word : '-L\(.*\)'`"
+					if test -n "$libpath" ; then
+						libpath="${dir}:$libpath"
+					else
+						libpath="$dir"
+					fi
+					mode=libs
+					;;
+				-L)	mode="ldflags"
+					;;
+				-R*)
+					dir="`expr $word : '-R\(.*\)'`"
+					if test -n "$libpath" ; then
+						libpath="${dir}:$libpath"
+					else
+						libpath="$dir"
+					fi
+					mode=libs
+					;;
+				[-+]rpath*)
+					dir="`expr $dir : '[-+]rpath\(.*\)'`"
+					if test -n "$libpath" ; then
+						libpath="${dir}:$libpath"
+					else
+						libpath="$dir"
+					fi
+					;;
+				[-+]runpath*)
+					dir="`expr $dir : '[-+]runpath\(.*\)'`"
+					if test -n "$libpath" ; then
+						libpath="${dir}:$libpath"
+					else
+						libpath="$dir"
+					fi
+					;;
+				-R|[-+]rpath|[-+]runpath)
+					mode=''
+					;;
+				*)	test -n "$libs" && \
+						libs="$libs "
+					libs="${libs}$word"
+					mode=libs
+					;;
+				esac
+			done
+
+			test -n "$capi_enablers" && \
+				cflags="${capi_enablers} $cflags"
+
+			note.___ "-- compiling: -----------------------"
+			if cd "/tmp/$$.capisearch" ; then
+				rm -f scooby.o scooby.exe
+			else
+				rm -rf /tmp/$$.*
+				exit 4
+			fi
+			note.___ "cc[$cc]"
+			note.___ "cflags[$cflags]"
+			note.___ "ldflags[$ldflags]"
+			note.___ "libs[$libs]"
+			note.___ "libpath[${libpath}]"
+			if $cc -c $cflags $ldflags scooby.c 2>/dev/null && \
+					test -f scooby.o ; then
+				# have compiled object file,
+				# can now try linking against libs...
+				note.___ "compiled OK"
+				note.___ "-- linking -----"
+				if $cc -o scooby.exe $cflags $ldflags scooby.o \
+						 $libs 2>/dev/null && \
+						test -f scooby.exe && \
+						note.___ linked OK && \
+						LD_LIBRARY_PATH="$libpath" \
+						LIBRARY_PATH="$libpath" \
+						./scooby.exe 2>/dev/null ; then
+					# got it!
+					note.___ run OK
+					status=0
+					cd "$oldpwd" && rm -rf /tmp/$$.*
+					break 2
+				else
+					rm -f scooby.o scooby.exe
+				fi
+			fi
+			if cd "$oldpwd" ; then
+				sleep 0
+			else
+				rm -rf /tmp/$$.*
+				exit 4
+			fi
+			IFS="$oldIFS"
+		done
+	elif /bin/false pkgconfig ; then
+		sleep 0
+	else
+		cflags=''
+		ldflags=''
+		libs=''
+		try=" :$CONF_COMMON_CAPI_DIRS:$HOME"
+		IFS=:
+		for capidir in $try ; do
+			IFS="$oldIFS"
+			cflags="$capi_enablers"
+			if test -d "$capidir" && test -d "$capidir/include" ; then
+				test -n "$cflags" && cflags="$cflags "
+				cflags="${cflags}-I$capidir/include"
+			fi
+			base_cflags="$cflags"
+			ldflags=''
+			test -d "$capidir" && test  -d "$capidir/lib" && \
+				ldflags="-L$capidir/lib"
+			base_ldflags="$ldflags"
+			note.___ "capi_try_cflags[${capi_try_cflags}]"
+			try=" :$capi_try_cflags"
+			IFS=:
+			for try_cflags in $try ; do
+				IFS="$oldIFS"
+				cflags="$base_cflags"
+				if test "$try_cflags" != ' ' ; then
+					if test -n "$try_cflags" ; then
+						test -n "$cflags" && cflags="$cflags "
+						cflags="${cflags}$try_cflags"
+					fi
+				fi
+				if test -n "$capi_cfg_prog" ; then
+					try="$capi_try_ldflags"
+				else
+					try=" :$capi_try_ldflags"
+				fi
+				IFS=:
+				for try_ldflags in $try ; do
+					IFS="$oldIFS"
+					ldflags="$base_ldflags"
+					if test "$try_ldflags" != ' ' ; then
+						if test -n "$try_ldflags" ; then
+							test -n "$ldflags" && \
+								ldflags="$ldflags "
+						ldflags="${ldflags}$try_ldflags"
+						fi
+					fi
+					note.___ "-- compiling: -----------------------"
+					if cd "/tmp/$$.capisearch" ; then
+						rm -f scooby.o scooby.exe
+					else
+						cd "$oldpwd" && rm -rf /tmp/$$.*
+						exit 4
+					fi
+					note.___ "cc[$cc]"
+					note.___ "cflags[$cflags]"
+					note.___ "ldflags[$ldflags]"
+					if $cc -c $cflags $capi_dep_cflags \
+							$ldflags $capi_dep_ldflags \
+							scooby.c 2>/dev/null &&
+							test -f scooby.o ; then
+						# have compiled object file,
+						# can now try linking against libs...
+						note.___ "compiled OK"
+						note.___ "-- linking -----"
+						try=" :$capi_try_libs"
+						IFS=:
+						for libs in $try ; do
+							IFS="$oldIFS"
+							note.___ "libs[$libs]"
+							if $cc -o scooby.exe \
+									$cflags \
+									$capi_dep_cflags \
+									$ldflags \
+									$capi_dep_ldflags \
+									scooby.o \
+									$libs $capi_dep_libs \
+									2>/dev/null &&
+									test -f scooby.exe &&
+									note.___ linked OK &&
+									./scooby.exe ; then
+								# got it!
+								status=0
+								cd "$oldpwd" && rm -rf /tmp/$$.*
+								break 5
+							else
+								rm -f scooby.exe
+							fi
+							IFS=:
+						done
+						rm -f scooby.o
+					fi
+					cd "$oldpwd"
+				done
+				IFS=:
+			done
+			IFS=:
+		done
+	fi
+done
+rm -rf /tmp/$$.*
+cd "$oldpwd" || exit 4
+
+
+if test "$status" -ne 0 ; then
+	test -z "$capi_indicators" && iflags="-UHAVE_$capi_name"
+	cflags=''
+	ldflags=''
+	libs=''
+else
+	test -z "$capi_indicators" && iflags="-DHAVE_$capi_name"
+fi
+
+case "$capi_desc" in
+*ABI)	;;
+*API)	;;
+*)	# presume it is an API
+	capi_desc="$capi_desc API"
+	;;
+esac
+
+# emit makefile-segment to stdout:
+#
+ccs=''
+for f in $capi_clevels ; do
+	test -n "$ccs" && ccs="${ccs}/"
+	ccs="${ccs}C$f"
+done
+test -n "$ccs" && ccs="(relative to ${ccs})"
+echo "# C compiler flags and indicators $ccs for the"
+echo "# $capi_desc, if available."
+prot=''
+IFS=:
+for word in $iflags ; do
+	IFS="$oldIFS"
+	case "$word" in
+	-D*=*)	sym=`expr "X$word" : 'X-D\(.*\)=.*'`
+		val=`expr "X$word" : 'X-D.*=\(.*\)'`
+		test -n "$prot" && prot="$prot && "
+		prot="${prot}defined(${sym}) && ($sym == ${val})"
+		;;
+	-U*)	sym=`expr "X$word" : 'X-U\(.*\)'`
+		test -n "$prot" && prot="$prot && "
+		prot="${prot}!defined(${sym})"
+		;;
+	-D*)	sym=`expr "X$word" : 'X-D\(.*\)'`
+		test -n "$prot" && prot="$prot && "
+		prot="${prot}defined(${sym})"
+		;;
+	esac
+	IFS=:
+done
+IFS="$oldIFS"
+IFS=:
+for word in $capi_indicators ; do
+	IFS="$oldIFS"
+	case "$word" in
+	*'=='*|*'>='*|*'<='*|*'>'*|*'<'*)
+		sym=`expr "X$word" : 'X\([A-Za-z0-9_]*\).*'`
+		op=`expr "X$word" : 'X[A-Za-z0-9_]*\([^A-Za-z0-9_]*\).*'`
+		val=`expr "X$word" : 'X[A-Za-z0-9_]*[^A-Za-z0-9_]*\(.*\)'`
+		test -n "$prot" && prot="$prot && "
+		prot="${prot}defined(${sym}) && (${sym}${op}${val})"
+		;;
+	*)
+		sym=`expr "X$word" : 'X\(.*\)'`
+		test -n "$prot" && prot="$prot && "
+		prot="${prot}defined(${sym})"
+		;;
+	esac
+	IFS=:
+done
+IFS="$oldIFS"
+
+s=API
+case "$capi_desc" in
+*ABI)	s=ABI ;;
+esac
+if test -n "$prot" ; then
+	echo '# C modules that need to tolerate the lack of the'
+	echo "# ${capi_desc}, should use eg:"
+	echo "#	#if $prot"
+	echo "# around uses of that ${s}."
+fi
+echo '#'
+test -n "$iflags" && iflags="$iflags "
+test "$status" -eq 0 && echo "${capi_name}_CC=\$(C${level})"
+echo "${capi_name}_CFLAGS=${iflags}$cflags"
+echo "${capi_name}_LDFLAGS=$ldflags"
+echo "${capi_name}_LIBS=$libs"
+echo ''
+
+# set 'Configure' variables:
+#
+setvar.___ "CONF_${capi_name}_CFLAGS"  "${iflags}$cflags"
+setvar.___ "CONF_${capi_name}_LDFLAGS" "$ldflags"
+setvar.___ "CONF_${capi_name}_LIBS"    "$libs"
+setvar.___ "CONF_${capi_name}_PROBED"  "$status"
+
+# and report findings:
+#
+if test "$status" -eq 0 ; then
+	echo "${capi_desc}: $cflags $ldflags ... $libs" 1>&2
+else
+	echo "${capi_desc}: not available" 1>&2
+fi
+
+exit "$status"

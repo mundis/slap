@@ -1,0 +1,2 @@
+#!/bin/ksh
+exec c89_cmd "$@"

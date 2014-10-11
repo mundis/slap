@@ -1,0 +1,26 @@
+ [previous] [up]  [next]          [Image]          [Image] [Image] [Image]
+
+                             Supported Printers
+
+----------------------------------------------------------------------------
+At the time of writing (August 2000), slap supports all Seiko Instruments'
+SLP models ever manufactured:
+
+    [SLP and SLP Plus]   [SLP EZ30]   [SLP Pro]   [SLP 100]   [SLP 120]
+                           [SLP 200]   [SLP 220]
+
+              Smart Label Printer      (SLP-1000)
+              Smart Label Printer Plus (SLP-1000P)
+              Smart Label Printer EZ30 (SLP-1100)
+              Smart Label Printer Pro  (SLP-2000)
+              Smart Label Printer 100  (SLP-100 and SLP-100N)
+              Smart Label Printer 120  (SLP-120)
+              Smart Label Printer 200  (SLP-200 and SLP-200N)
+              Smart Label Printer 220  (SLP-220)
+              Smart Label Printer 240  (SLP-240)
+
+NOTE: the printers must be connected via their serial port: USB ports cannot
+be handled at this time. Maybe next year...
+
+----------------------------------------------------------------------------
+ [previous] [up]  [next]              [Image]            [home]  [mail me]

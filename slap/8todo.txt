@@ -1,0 +1,59 @@
+(1) alignment options; by flag and escape-codes
+
+	-vt -vc -vb -hl -hc -hr -ll -lc -lr
+
+	ESC vt		image top
+	ESC vc		image vertical centre
+	ESC vb		image bottom
+	ESC hl		image left
+	ESC hc		image horizontal centre
+	ESC hr		image right
+	ESC ll		lines left
+	ESC lr		lines right
+	ESC lc		lines center
+
+	default is lines-left, image-top, image-left (-vt -hl -ll)
+
+(2) Multiple fonts per label; by escape-codes
+
+	ESC F <n> BEL	full font name (no path)
+	ESC T <n> BEL	typeface name
+	ESC = <d><d>	size in points
+	ESC +		next larger point size
+	ESC -		next smaller point size
+	ESC B		bold on
+	ESC b		bold off
+	ESC I		italic on
+	ESC i		italic off
+	ESC U		underline on
+	ESC u		underline off
+	ESC 0		bold, italic, underline off
+	ESC 1		revert to initial typeface (from -f*)
+
+(3) Interactive WYSIWIG GUI front-ends: mslap, xvslap, even dtslap! See (8).
+
+(4) TrueType fonts! See (8).
+
+(5) Accept some bitmap-formats as input: mbm, xbm
+	Printed "as is", with cropping. Alignment honoured
+	(in case the bitmap is smaller than the label).
+	See (8).
+
+(6) drivers to provide "fast-disconnect" function for use after failed probe
+
+(7) proper general-purpose "stacked" signal-handling - C++ exceptions for C!
+
+(8) ********* Proper full modularisation for extensibility **********
+
+	Seperate programs for:
+		low-level printing
+		text-mode rendering of bitmap fonts
+		text-mode redering of TrueType fonts
+		text-mode redering of fonts from a X font server
+		Motif GUI
+		XView GUI
+		CDE GUI
+		other GUIs
+
+	All programs will have to link with the device-drivers, because they
+	all need access to the drivers "printer-model geometry" code.

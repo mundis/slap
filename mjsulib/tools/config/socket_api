@@ -1,0 +1,87 @@
+#!/bin/sh
+# @(#)socket.api	3.0	17may2009 MJS
+#------------------------------------------------------------------------------
+# 3.0   17may2009 MJS   compatibility with new "soft/hard" Configure mechanism,
+#                       also removal of temp files on interrupt.
+# 2.0   27sep2004 MJS   revised to be used as a Configure-callable module.
+# 1.0   15aug1998 MJS   original version.
+#------------------------------------------------------------------------------
+capi_name=SOCKET
+capi_desc='*generic* "network-sockets"'
+capi_enablers=''			# API-defined enablers
+capi_indicators=''			# API-defined indicators
+capi_clevels="89 89X 99"
+
+
+# any unusual or platform-specific extra C-compiler flags we may require:
+capi_try_cflags=''
+capi_try_ldflags=''
+capi_try_libs="-lsocket:-lsocket -lnsl:-lsocket -linet -lnsl:-lxnet:-lxnet -lnsl"
+
+# any other APIs we depend on:
+capi_dep_cflags=""
+capi_dep_ldflags=""
+capi_dep_libs=""
+
+
+
+#desc: Determine the C-compiler flags, relative to C89/C99, needed to get the
+#desc: $capi_desc API, if available.
+#desc:
+#desc: This is intended to cover the common subset of X/Open XNET4, BSD sockets
+#desc: (old-style and new-style), and SVR4 sockets; and thus should *not* be
+#desc: used to determine the availability of fancy extensions and
+#desc: non-transport-endpoint socket facilities (such as "routing sockets"
+#desc: and the like).
+
+#cvar: CONF_${capi_name}_CFLAGS/_LDFLAGS/_LIBS
+
+#out: relevant "makefile" variable-definitions.
+
+
+eval status='$CONF_'"${capi_name}"'_PROBED'
+test -n "$status" && exit "$status"
+. mod.start
+
+
+# build a small C source file that uses uniqely "socket"
+# facilities:
+#
+if type uname >/dev/null 2>&1 ; then
+	node_name="`uname -n`"
+elif type nodename >/dev/null 2>&1 ; then
+	node_name="`nodename`"
+else
+	node_name="localhost"
+fi
+sed -e "s/NODE_NAME/$node_name/" > /tmp/$$.c << EOT
+#include <stdio.h>
+#include <errno.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <netdb.h>
+
+int main(ac, av)
+	unsigned int ac;
+	char **av;
+	{
+	extern int errno;
+	int s, v, l;
+
+	/* reference related functions: */
+	gethostbyname("NODE_NAME");
+	getprotobyname("tcp");
+	inet_addr("127.0.0.1");
+	/* do some real socket calls: */
+	s = socket(PF_INET, SOCK_DGRAM, 0);	/* unspecified protocol */
+	errno = ENOTSOCK;			/* existance-test */
+	l = sizeof(v);
+	if (getsockopt(s, SOL_SOCKET, SO_ERROR, (char *) &v, &l) < 0)
+		return (0);
+	return (0);
+	}
+EOT
+	
+. mod.capisearch

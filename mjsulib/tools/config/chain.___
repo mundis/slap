@@ -1,0 +1,22 @@
+#!/bin/sh
+# To allow a helper to call *another* helper when
+# eg: a prerequisite helper has not been already called...
+# Arg1 is the name of a file into which the appropriate shell-variable
+# definitions are written.
+# Arg2 is the helper to call, other args are passed to the
+# chained helper.
+#
+# If CONF_CACHE is defined and exists, the shell-variable definitions are
+# *also* written to that file.
+#
+###echo "[[ chaining $2 ]]" 1>&2
+
+shout="$1"
+echo '' >"$shout" || exit 4
+shift || exit 4
+
+CONF_CACHE="$shout" "$@"
+status="$?"
+
+test -n "$CONF_CACHE" && test -f "$CONF_CACHE" && cat "$shout" >>"$CONF_CACHE"
+exit "$status"

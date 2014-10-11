@@ -1,0 +1,13 @@
+PKG_CONFIG_DISABLE_UNINSTALLED=y
+
+libs=`pkg-config --libs-only-l ...`
+
+ldflags=`pkg-config --libs-only-L ...`
+
+cflags=`pkg-config --cflags ...`
+
+pkg-config --atleast-version=... ... || echo fail
+
+pkg-config --max-version=... .. || echo fail
+
+PKG_CONFIG_PATH=/usr/lib/pkgconfig:/usr/local/lib/pkgconfig:...

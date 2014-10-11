@@ -1,0 +1,760 @@
+#!/bin/sh
+# @(#)c89.cmd	3.0.1	05may2010 MJS
+#------------------------------------------------------------------------------
+# 3.0.1	05may2010 MJS   fixed detection of extended-C89 flags for SunPro C
+#			when invoked as "c89" instead of "cc".
+# 3.0   25may2009 MJS   compatibility with new "soft/hard" Configure mechanism,
+#                       also removal of temp files on interrupt.
+# 2.0   27sep2004 MJS   revised to be used as a Configure-callable module.
+# 1.0   15aug1998 MJS   original version.
+#------------------------------------------------------------------------------
+
+#
+#desc: Determine the command-line prefixes for compiling/linking ANSI C89
+#desc: programs, both 'strict ANSI C' and 'ANSI C with extensions from
+#desc: feature-test macros' (eg: -DPOSIX_SOURCE).
+#desc:
+#desc: 'Configure' variables: CONF_C89 CONF_C89X
+#desc: Private variables: CONF_QUICK_C89 CONF_QUICK_C89X
+#desc:
+#desc: If CC_AGGRESSIVE is predefined, aggressive C compiler optimisations may
+#desc: be enabled, in particular inlining. Must not be used for building libs
+#desc: that provide a programmer-overridable function-implementation facility).
+#desc:
+#desc: If CC_NOSTRIP is predefined, the C compiler will be instructed to not
+#desc: strip the symbol-table from generated executables. This is only needed
+#desc: by a very few special-purpose programs, or for external debugging.
+
+#opt: -c89=STR
+#opt: specifies the name, or command-line with flags, of an ANSI C
+#opt: compiler. The default is to search for a suitable C compiler
+#opt: and flags.
+
+#out: relevant "makefile" variable-definitions.
+
+
+
+eval status='$CONF_C89_PROBED'
+test -n "$status" && exit "$status"
+. mod.start
+
+
+############################################################################
+#########	 module-specific '-configure' actions		############
+############################################################################
+
+
+#######################################################################
+#
+# If present, the environment-variable CONF_C89_NAME specifies the name
+# or command-line prefix by which to look for the compiler - and if it
+# is a pathname, $PATH is not searched. Otherwise, we try all possible
+# known or suspected compiler names/commands.
+# 
+# The typical use of CONF_C89_NAME is to allow users of machines with multiple
+# compilers installed, to specify which compiler to use. For example, if you
+# have a system-vendors C compiler installed as /usr/bin/cc, the GNU C compiler
+# installed as /usr/bin/gcc, and the Acme C compiler installed as
+# /usr/acme/bin/cc, you could preset CONF_C89_NAME in these ways:
+#
+#	value		meaning
+#	-----		-------
+#	cc		either system-vendors or Acme compiler,
+#			whichever occurs first on $PATH
+#	/usr/bin/cc	system-vendors compiler
+#	gcc		GNU compiler
+#	/usr/bin/cc -K	system-vendors compiler, but always use
+#			-K *in addition to any other flags needed to
+#			get ANSI semantics*.
+#
+# The script still tries to "recognise" such a named compiler, because
+# we need to be sure of precise ANSI C semantics, which often requires
+# some additional compiler flags, and also because (if we *do*
+# recognise it) we want to generate suitably optimised code, which
+# again almost always requires extra compiler flags.
+#
+# A final "no extra flags" test also allows the invoker to specify
+# compiler-specific flags needed to get ANSI C semantics, which allows
+# completely unrecognised C compilers to be used, eg:
+#
+#	CONF_C89_NAME="/export/whistle/bin/wcc -ansi -fnone -w2 -nobce"
+# 
+# Note, however that there is an absolute assumption that all C
+# compilers use -o to specify the name of the output file, and a weaker
+# assumption that they use -c to specify "compile to relocatable object
+# file rather than an executable file".
+#
+#######################################################################
+#
+# IMPORTANT:
+#
+# "suitably optimised" means optimised for generic CPU architectures,
+# such as "sparc" or "vax". Avoid generating code that will not run on
+# some members of a CPU family that can all run the same or a different
+# minor release of the native O/S.
+#
+# For example, when compiling code for SunOS 5.x on SPARC, we must
+# not generate "sparcv9" code, because it will *not run* on some SPARC
+# systems (eg: SS20, Ultra-1/170) even if they are running SunOS 5.7.
+# In such a case, the best bet is usually to generate plain "sparc"
+# code, which will run on all SPARC systems, and still pretty darned
+# fast on the latest hardware. More to the point, it will run on
+# SunOS 5.1 if needed.
+#
+# In the case of PC-Linux, the compiler code-generation option "i486"
+# does not prevent the code running on 386 machines - it just runs
+# a *tiny* bit slower on them, so i486 code-generation would be OK.
+# Conversely, "i586" code generation can impose quite a severe speed
+# penalty on 386 and 486 systems, so we avoid it.
+#
+# Some compilers allow you to optimise for specific L1- and L2-cache
+# properties such as line-size, associativity, size, timing properties,
+# number of CPUs, cache-sharing protocol, et al. For instance, the
+# SunPro 4.x C compiler has options like -xtarget=ss10/612
+# (ie: SPARCstation-10 model 612, as opposed to the models
+# 40/51/512/712/etc), or even -xtarget=native.
+# Obviously, optimising like that is *not* "suitable" as defined above.
+#
+# The reason for this restriction is that the software being compiled
+# may be installed in a shared network directory, and we don't want to
+# have to build separate installations for all the minor architectural
+# differences that may be present (sun4c, sun4e, sun4m, sun4d, sun4u,
+# sun4u1, sun4u2, et al, all running the same release of Solaris; or
+# mips1, mips2, mips3, mips64abi all running Irix, and so on...).
+#
+# Of course, people with multiple systems with different OSes and
+# *major* architectures (eg: Solaris/SPARC versus Solaris/x86, or
+# Linux/x86 versus Linux/PPC versus Linux/68k (etc), or SunOS/68k
+# versus SunOS/SPARC, or VAX versus PDP-11, and so on and so on)
+# will not be able to *directly* share binary compiled programs
+# between such different systems (only via runtime emulators which are 
+# best avoided if at all possible). Hint: creative use of "uname -p"
+# and/or "uname -m" when setting $PATH can help in such cases, but
+# watch out for the BSD 4.x/OpenBSD/FreeBSD/NetBSD "uname -p" that
+# insists on delivering "specific" information rather than general
+# processor-type or baseline instruction-set name.
+#
+# By targeting only general architectures, we can at least
+# ensure that the software has to be configured, built, installed
+# and reinstalled as few times as strictly necessary.
+#
+# For those users that have to get the last 0.0001% out of their new CPUs
+# (hey, what about the *old* CPUs that really need it?), they can edit
+# the final makefile or preset CONF_C89_NAME via "-c89=..." to do so.
+#
+# The *default* behaviour is to go for "general architecture".
+#
+# Yes, I am a Network Administrator... :-P
+#
+#######################################################################
+# NOTE: this module uses a slightly different control-structure to most
+# of the others, as it has to cater for *partially-specified* preset
+# values:
+# $CONF_C89_NAME is used as the preset *name* of the C compiler to try.
+#
+# NOTE: if $CC_NOSTRIP is set, the compiler command should be
+# set to *not* strip the symbol-table of constructed executable files.
+#
+# NOTE: if $CC_AGGRESSIVE is set, try to enable optimisations that usually
+# increase the size of generated code (loop unrolling, automatic inlining);
+# by default they are not enabled, to avoid potentially very unwelcome
+# increase in object-code size. NOTE THAT THIS MUST *NOT* BE USED
+# WHEN COMPILING LIBRARIES THAT CONTAIN PROGRAMMABLY-OVERRIDABLE
+# FUNCTION-IMPLEMENTATIONS IN THEIR EXTERNAL API (such as client-specified
+# global error-handlers) - because internal uses of any inlined functions
+# would not be overridable...
+#######################################################################
+
+# process additional 'Configure' command-line flags:
+#
+for flag in "$@" ; do
+	case "$flag" in
+	-c89=*|--c89=*)
+		CONF_C89_NAME="`echo $flag | sed -e 's/^[^=]*=//'`"
+		test -z "$CONF_C89_NAME" && exec "$my_full_pathname" -help
+		setvar.___ CONF_C89_NAME "$CONF_C89_NAME"
+		;;
+	esac
+done
+
+
+# Main program:
+#
+if test -z "$status" ; then
+	cc=''
+	if test -n "$CONF_C89_NAME" ; then
+		cc="$CONF_C89_NAME"
+		echo '' 1>&2
+		echo "user-specified base C89 compiler command: $cc" 1>&2
+	fi
+
+	# create a small C program that uses some uniquely ANSI
+	# C facilities (including indented preprocessor commands,
+	# ANSI varargs, const, fgetpos, complex prototype decls,
+	# function-pointers, etc):
+	#
+	cat > /tmp/$$.c << 'EOT'
+	/* C program source to primitively test compiler conformance to
+	 * ANSI Standard X3.159-1989 (hosted program environment). Note that
+	 * this is a pretty basic test, mainly designed to catch archaic
+	 * pre-ANSI "K&R" C compilers. There are classes of nearly-ANSI,
+	 * ANSI+extensions, and C99 compilers that it may incorrectly let pass.
+	 *
+	 * Do YOU have an ANSI C89 compiler?
+	 */
+	#include <stdio.h>
+	#include <stdlib.h>
+	#include <stdarg.h>	/* pre-ANSI compilers seem to never have
+				 * this one */
+
+	int main(unsigned int, char **); /* prototype declaration */
+
+	static void put(const char *fmt, ...)		/* ANSI void type and 
+						 * ANSI varargs syntax */
+		{
+		va_list ap;
+		va_start(ap, fmt);
+		vfprintf(stdout, fmt, ap);
+		va_end(ap);
+		return;
+		}
+
+	int main(unsigned int ac, char **av)
+		{
+		void (* const func)(const char *fmt, ...) = put;
+		fpos_t pos;
+
+		fgetpos(stdin, &pos);	/* pre-ANSI compilers never have this */
+
+		if ('\x00')
+			{
+			/* with *default* flags, Compaq OSF 4.0 cc misparses and
+			 * miscomputes values of hex character constants (such
+			 * that '\x00' evals to 'x' instead of zero) */
+			return (EXIT_FAILURE);
+			}
+		#define FOO(x) 'x'
+		if (FOO(a) == 'a')
+			{
+			/* with *default* flags, IBM C 6 for AIX, and some other
+			 * compilers, are merely almost-ANSI: they replace macro
+			 * parameters inside strings & character constants */
+			return (EXIT_FAILURE);
+			}
+
+		for (--ac, ++av; ac && *av; --ac, ++av)
+			{
+			func("%s", *av);
+			(*func)((ac == 1) ? "\n" : " ");
+			}
+		return (EXIT_SUCCESS);		/* ANSI-ism */
+		}
+EOT
+
+
+	# pre-compute base OS name and cache result
+	exec 9>&2
+	exec 2>/dev/null
+	uname_s="`uname -s`"
+	exec 2>&9
+	exec 9>&-
+
+	# probe for compiler and flags needed to get ANSI C semantics:
+	#
+	# NOTE: many systems have a "c89" command that is NOT
+	# conformant to POSIX.2 - often it is just an alias for the
+	# vendor's own C compiler. Thus we must still test "c89"
+	# commands with all relevant options, and probe for a generic
+	# POSIX.2 "c89" only *after* all the more specific tests.
+	#
+	CONF_C89=""
+	while test -z "$CONF_C89" ; do
+
+		# GNU C 2.x (excluding mips), or GNU C v3.x or later?
+		# Note cannot use -O3 on mips1/Irix5.3, as Irix assembler
+		# sometimes barfs when "gcc -O3" is used... see below
+		# try with -ftracer generic optimisation if available (gcc v3.x)
+		pre="-W -Wstrict-prototypes -Wmissing-prototypes"
+		test -n "$CC_NOSTRIP" || pre="$pre -s"
+		opt="-O2"
+		test -n "$CC_AGGRESSIVE" && opt="-O3 -finline-functions"
+		post=''
+		for alt in -ftracer "" ; do
+			flags=''
+			for word in "$pre" "$alt" "$opt" "$post" ; do
+				test -n "$word" && test -n "$flags" &&
+					flags="$flags "
+				flags="${flags}$word"
+			done
+			for acc in "$cc" gcc cc ; do
+				if test -z "$acc" ; then
+					sleep 0
+				elif trycc.___ "$acc" "-ansi $flags" '' '' /tmp</tmp/$$.c ; then
+					CONF_C89="$acc -ansi $flags"
+					CONF_C89X="$acc $flags"
+					CONF_QUICK_C89="$acc -ansi $pre $alt $post"
+					CONF_QUICK_C89X="$acc $pre $alt $post"
+					break 3
+				fi
+				test -n "$cc" && break
+			done
+		done
+
+		# GNU C 2.x (including mips), or GNU C v3.x or later?
+		# try with -ftracer generic optimisation if available (gcc v3.x)
+		pre="-pedantic -W -Wstrict-prototypes -Wmissing-prototypes"
+		test -n "$CC_NOSTRIP" || pre="$pre -s"
+		opt="-O2"
+		test -n "$CC_AGGRESSIVE" && opt="-O2 -finline-functions"
+		post=''
+		for alt in -ftracer "" ; do
+			flags=''
+			for word in "$pre" "$alt" "$opt" "$post" ; do
+				test -n "$word" && test -n "$flags" &&
+					flags="$flags "
+				flags="${flags}$word"
+			done
+			for acc in "$cc" gcc cc ; do
+				if test -z "$acc" ; then
+					sleep 0
+				elif  trycc.___ "$acc" "-ansi $flags" '' '' /tmp</tmp/$$.c ; then
+					CONF_C89="$acc -ansi $flags"
+					CONF_C89X="$acc $flags"
+					CONF_QUICK_C89="$acc -ansi $pre $alt $post"
+					CONF_QUICK_C89X="$acc $pre $alt $post"
+					break 3
+				fi
+				test -n "$cc" && break
+			done
+		done
+
+		# SunPro C 2.x/3.x, on anything except SunOS 4.x
+		pre="-vc -mc -fd -xstrconst"
+		test -n "$CC_NOSTRIP" || pre="$pre -s"
+		opt="-xO2"
+		test -n "$CC_AGGRESSIVE" && opt="-xO4"
+		post=''
+		for alt in '' ; do
+			flags=''
+			for word in "$pre" "$alt" "$post" ; do
+				test -n "$word" && test -n "$flags" &&
+					flags="$flags "
+				flags="${flags}$word"
+			done
+			for acc in "$cc" acc c89 ; do
+				if test -z "$acc" ; then
+					sleep 0
+				elif  trycc.___ "$acc" "-Xc $flags $opt" '' '' /tmp</tmp/$$.c ; then
+					CONF_C89="$acc -Xc $flags $opt"
+					CONF_C89X="$acc -Xa $flags $opt"
+					CONF_QUICK_C89="$acc -Xc $pre $alt $post"
+					CONF_QUICK_C89X="$acc -Xa $pre $alt $post"
+					break 3
+				fi
+				test -n "$cc" && break
+			done
+		done
+
+		# SunPro C 2.x/3.x, on SunOS 4.x
+		pre="-vc -fd -xstrconst"
+		test -n "$CC_NOSTRIP" || pre="$pre -s"
+		opt="-xO2"
+		test -n "$CC_AGGRESSIVE" && opt="-xO4"
+		post=''
+		for alt in '' ; do
+			flags=''
+			for word in "$pre" "$alt" "$opt" "$post" ; do
+				test -n "$word" && test -n "$flags" &&
+					flags="$flags "
+				flags="${flags}$word"
+			done
+			for acc in "$cc" acc c89 ; do
+				if test -z "$acc" ; then
+					sleep 0
+				elif  trycc.___ "$acc" "-Xc $flags" '' '' /tmp</tmp/$$.c ; then
+					CONF_C89="$acc -Xc $flags"
+					CONF_C89X="$acc -Xa $flags"
+					CONF_QUICK_C89="$acc -Xc $pre $alt $post"
+					CONF_QUICK_C89X="$acc -Xa $pre $alt $post"
+					break 3
+				fi
+				test -n "$cc" && break
+			done
+		done
+
+		# SunPro C 4.0 and later
+		pre="-v -fd -mc -xstrconst"
+		test -n "$CC_NOSTRIP" || pre="$pre -s"
+		opt="-xO2"
+		test -n "$CC_AGGRESSIVE" && opt="-xO4"
+		post=''
+		# on SPARC targets, later versions of SunPro C default to
+		# generating sparcv8plus binaries (won't run on pre-UltraSPARC
+		# systems, but we require to generate binaries that will)...
+		# although uname and type will not be available on all systems,
+		# they are available on all systems on which SunPro C itself
+		# can run, so we are safe (as long as we discard the
+		# spurious error-messages)
+		exec 9>&2
+		exec 2>/dev/null
+		if { type uname >/dev/null 2>&1 &&
+			test "`uname -p 2>/dev/null`" = sparc 2>/dev/null ;} ||
+			{ test -f /usr/ucb/mach &&
+				test `/usr/ucb/mach` = sparc 2>/dev/null ;} ||
+			{ test -f /usr/ucb/arch &&
+				test `/usr/ucb/arch` = sun4 2>/dev/null ;} ||
+			{ type mach >/dev/null 2>&1 &&
+				test `mach` = sparc 2>/dev/null ;} ||
+			{ type arch >/dev/null 2>&1 &&
+				test `arch` = sun4 2>/dev/null ;} ; then
+			# is a SPARC, force any-sparc target
+			post="-xarch=v7"
+		elif { type uname >/dev/null 2>&1 &&
+			test "`uname -p 2>/dev/null`" = i386 2>/dev/null ;} ; then
+			post=-xarch=i386
+		fi
+		exec 2>&9
+		# -xregs=no%appl is needed for ABI conformance on SPARC, was
+		# the default in pre-5.8 compiler but C5.8 on SPARC defaults to
+		# this particular ABI violation (use of g2,g3,g4 registers);
+		# note that the corrective "-xregs=no%appl" warns/fails on old
+		# versions of the compiler, so we try a clumsy probe for it...
+		for alt in '' ; do
+			flags=''
+			for word in "$pre" "$alt" "$opt" "$post" ; do
+				test -n "$word" && test -n "$flags" &&
+					flags="$flags "
+				flags="${flags}$word"
+			done
+			for acc in "$cc" cc c89 ; do
+				c89s='-Xc'
+				c89x='-Xa'
+				if test -n "$acc" ; then
+					f="`\"$acc\" -flags | egrep -- '-xc99|-xCC|-xregs' 2>/dev/null`"
+					case "$f" in
+					*-xCC*)	c89s="$c89s -xCC"
+						c89x="$c89x -xCC"
+						;;
+					esac
+					case "$f" in
+					*-xc99*'%none'*)
+						c89s="$c89s -xc99=%none"
+						;;
+					*-xc99*'none'*)
+						c89s="$c89s -xc99=none"
+						;;
+					esac
+					case "$f" in
+					*-xc99*'%'*lib*)
+						c89x="$c89x -xc99=%all,no%lib"
+						;;
+					*-xc99*'lib'*)
+						c89x="$c89x -xc99=all,no_lib"
+						;;
+					esac
+					# need no%appl on new SPARC compilers:
+					case "$f.$post" in
+					*-xregs*.*v7)
+						c89s="$c89s -xregs=no%appl"
+						c89x="$c89x -xregs=no%appl"
+						;;
+					esac
+				fi
+				if test -z "$acc" ; then
+					sleep 0
+				elif trycc.___ "$acc" "$c89s $flags" '' '' /tmp</tmp/$$.c ; then
+					CONF_C89="$acc $c89s $flags"
+					CONF_C89X="$acc $c89x $flags"
+					CONF_QUICK_C89="$acc $c89s $pre $alt $post"
+					CONF_QUICK_C89X="$acc $c89x $pre $alt $post"
+					break 3
+				fi
+				test -n "$cc" && break
+			done
+		done
+
+		# HP-UX ANSI C compiler (but NOT the non-ANSI bundled one)?
+		pre="-Ae"
+		opt=''
+		test -n "$CC_AGGRESSIVE" && opt="+Oaggressive"
+		post='+DAportable +ESlit'
+		for alt in '' ; do
+			flags=''
+			for word in "$pre" "$alt" "$opt" "$post" ; do
+				test -n "$word" && test -n "$flags" &&
+					flags="$flags "
+				flags="${flags}$word"
+			done
+			for acc in "$cc" cc c89 ; do
+				if test -z "$acc" ; then
+					sleep 0
+				elif trycc.___ "$acc" "$flags" '' '' /tmp</tmp/$$.c ; then
+					CONF_C89="$acc $flags"
+					CONF_C89X="$acc -Aa $flags"
+					CONF_QUICK_C89="$acc $pre $alt $post"
+					CONF_QUICK_C89X="$acc -Aa $pre $alt $post"
+					break 3
+				fi
+				test -n "$cc" && break
+			done
+		done
+
+		# IBM AIX C Compiler?
+		pre='-qro -qnoprint -qroconst -qextchk'
+		opt='-O2'
+		post=''
+		c89s='-qlanglvl=ansi -std'
+		c89x='-qlanglvl=extc89'
+		for alt in '' ; do
+			flags=''
+			for word in "$pre" "$alt" "$opt" "$post" ; do
+				test -n "$word" && test -n "$flags" &&
+					flags="$flags "
+				flags="${flags}$word"
+			done
+			for acc in "$cc" cc xlc c89 ; do
+				if test -z "$acc" ; then
+					sleep 0
+				elif trycc.___ "$acc" "$c89s $flags" \
+						'' '' /tmp</tmp/$$.c ; then
+					CONF_C89="$acc $c89s $flags"
+					CONF_C89X="$acc $c89x $flags"
+					CONF_QUICK_C89="$acc $c89s $pre $alt $post"
+					CONF_QUICK_C89X="$acc $c89x $pre $alt $post"
+					break 3
+				fi
+				test -n "$cc" && break
+			done
+		done
+
+		# SGI bundled Irix (5.x, 6.x) C Compiler
+		# or SGI MIPSpro C Compiler?
+		pre='-use_readonly_const -G0 -rdata_shared'
+		opt='-O2'
+		post=''
+		for alt in '' ; do
+			flags=''
+			for word in "$pre" "$alt" "$opt" "$post" ; do
+				test -n "$word" && test -n "$flags" &&
+					flags="$flags "
+				flags="${flags}$word"
+			done
+			for acc in "$cc" cc c89 ; do
+				if test -z "$acc" ; then
+					sleep 0
+				elif trycc.___ "$acc -ansi" "$flags" '' '' /tmp</tmp/$$.c ; then
+					CONF_C89="$acc -ansi $flags"
+					# damn Irix inverted POSIX API logic!
+					CONF_C89X="$acc $flags" # no -ansi!!
+					CONF_QUICK_C89="$acc -ansi $pre $alt $post"
+					CONF_QUICK_C89X="$acc $pre $alt $post" # no -ansi!!
+					break 3
+				fi
+				test -n "$cc" && break
+			done
+		done
+
+		# Cray Research Standard C Compiler
+		# (eg: under UNICOS et al)?
+		pre="-h abort -h port=x"
+		opt='-O'
+		post=''
+		c89s='-h stdc -h notolerant'
+		c89x=''
+		for alt in '' ; do
+			flags=''
+			for word in "$pre" "$alt" "$opt" "$post" ; do
+				test -n "$word" && test -n "$flags" &&
+					flags="$flags "
+				flags="${flags}$word"
+			done
+			for acc in "$cc" cc c89 ; do
+				if test -z "$acc" ; then
+					sleep 0
+				elif trycc.___ "$acc" "$c89s $flags" '' '' /tmp</tmp/$$.c ; then
+					CONF_C89="$acc $c89s $flags"
+					CONF_QUICK_C89="$acc $c89s $pre $alt $post"
+					CONF_C89X="$acc $c89x $flags"
+					CONF_QUICK_C89="$acc $c89x $pre $alt $post"
+					break 3
+				fi
+				test -n "$cc" && break
+			done
+		done
+
+		# DERA TenDRA 4.12 compiler?
+		# NOTE: although -Yansi or -Yposix would seem useful here,
+		# TenDRA C cannot compile some valid ANSI C89 programs if those
+		# are used (target-dependant '#if' problem), so we have to use
+		# -Ysystem even though, in principle, such allows a larger API.
+		flags='-Ysystem -tidy'
+		test -n "$CC_NOSTRIP" || flags="$flags -s"
+		for acc in "$cc" tcc ; do
+			if test -z "$acc" ; then
+				sleep 0
+			elif trycc.___ "$acc" "-Xc $flags" '' '' /tmp</tmp/$$.c ; then
+				CONF_C89="$acc -Xc $flags"
+				CONF_C89X="$acc -Xa $flags"
+				break 2
+			fi
+			test -n "$cc" && break
+		done
+
+		# generic SVR3/SVR4 compiler, or similar?
+		pre=''
+		tryopt='-Wc,O1'
+		test -n "$CC_AGGRESSIVE" && tryopt='-Wc,O2'
+		post=''
+		for opt in "$tryopt" '' ; do
+			for alt in '-Xc' '' ; do
+				flags=''
+				for word in "$pre" "$alt" "$opt" "$post" ; do
+					test -n "$word" && test -n "$flags" &&
+						flags="$flags "
+					flags="${flags}$word"
+				done
+				for acc in "$cc" cc ; do
+					if test -z "$acc" ; then
+						sleep 0
+					elif trycc.___ "$acc" "$flags" '' '' /tmp</tmp/$$.c ; then
+						CONF_C89="$acc $flags"
+						CONF_QUICK_C89="$acc $pre $alt $post"
+						break 4
+					fi
+					test -n "$cc" && break
+				done
+			done
+		done
+
+		# something else
+		# (try with candidate list of known ANSI-enabling flags, then
+		# try with no extra flags at all); note that these flags might,
+		# in some cases, enable extensions to C89, but should otherwise
+		# be conformant enough implementations for the vast majority
+		# of C89 source files...
+		for pre in -qlanglvl=extc89 -qlanglvl=ansi -std '' -ansi ; do
+			opt=''
+			post=''
+			for alt in '' ; do
+				flags=''
+				for word in "$pre" "$alt" "$opt" "$post" ; do
+					test -n "$word" && test -n "$flags" &&
+						flags="$flags "
+					flags="${flags}$word"
+				done
+				for acc in "$cc" cc c89 acc xlc gcc c ; do
+					if test -z "$acc" ; then
+						sleep 0
+					elif trycc.___ "$acc" "$flags" '' '' /tmp</tmp/$$.c ; then
+						CONF_C89="$acc $flags"
+						case "$uname_s" in
+						*[Hh][Pp][Uu][Xx]*)
+							# don't ask, sigh...
+							CONF_C89X="$acc -Aa"
+							;;
+						esac
+						break 4
+					fi
+					test -n "$cc" && break
+				done
+			done
+		done
+		break
+	done
+	rm -f /tmp/$$.c
+
+	if test -n "$CONF_C89" ; then
+		status=0
+	else
+		test -n "$cc" &&
+			echo "error: user-specified ANSI C compiler" \
+				"not found/recognised" 1>&2
+		status=2
+	fi
+
+fi
+
+if test "$status" -ne 0 ; then
+	CONF_C89="not found"
+fi
+test -z "$CONF_C89X" && CONF_C89X="$CONF_C89"
+if test -z "$CONF_QUICK_C89" ; then
+	if test -n "$CONF_C89" ; then
+		CONF_QUICK_C89="$CONF_C89"
+	fi
+fi
+if test -z "$CONF_QUICK_C89X" ; then
+	if test -n "$CONF_C89X" ; then
+		CONF_QUICK_C89X="$CONF_C89X"
+	fi
+fi
+
+if test "$status" -eq 0 ; then
+	# in the HPUX system header files, some extended-C types are only
+	# visible if _HPUX_SOURCE is defined, for at least SunPro C, GCC
+	# and HPs own compilers; so we pre-define it for C89X, at the cost
+	# of some namespace pollution side-effects...
+	case "$uname_s" in
+	*[Hh][Pp][Uu][Xx]*)
+		CONF_C89X="$CONF_C89X -D_HPUX_SOURCE"
+		CONF_QUICK_C89X="$CONF_QUICK_C89X -D_HPUX_SOURCE"
+		;;
+	esac
+fi
+
+aggressive=''
+if test -n "$CC_AGGRESSIVE" && test "$status" -eq 0 ; then
+	aggressive='notice: aggressive C compiler optimisations are enabled'
+fi
+echo '' 1>&2
+echo "ANSI C (C89) compiler: $CONF_C89" 1>&2
+test -n "$aggressive" && echo "$aggressive" 1>&2
+echo '' 1>&2
+echo "extended C89 compiler: $CONF_C89X" 1>&2
+test -n "$aggressive" && echo "$aggressive" 1>&2
+
+
+# emit makefile-segment to stdout:
+#
+echo ''
+echo '# command-line to compile strict ANSI C (ANSI X3.159-1989, aka C89)'
+echo '# source files:'
+test -n "$aggressive" && echo "# [$aggressive]"
+echo '#'
+echo "C89=$CONF_C89"
+echo ''
+
+echo ''
+echo '# command-line to compile "extended C" (C89 with unspecified *language*'
+echo '# extensions, if available; it should *not*, in and of itself, extend the'
+echo '# set of API functions or symbols available, rather it is used to enable'
+echo '# unspecified but common language extensions eg: a "long long" datatype'
+echo '# when such is available. Note that for some compilers, C89X does not'
+echo '# confer any language extensions, because it does not implement any, or'
+echo '# Configure could not figure out how to enable them.'
+echo '#'
+echo '# Use of C89X is *not* recommended, except in those situations where an'
+echo '# implementation of a particular ABI mandates it (eg: although the GTK1'
+echo '# libraries can be built as a fully-ANSI-C compliant ABI, if your local'
+echo '# sysadmin built it with language extensions enabled, you may have to compile'
+echo '# any of your programs that link to it with such extensions enabled because'
+echo '# such a GTK1 ABI *implementation* may *require* long-long linkage.'
+test -n "$aggressive" && echo "# [$aggressive]"
+echo '#'
+echo "C89X=$CONF_C89X"
+echo ''
+
+
+# and set 'Configure' variables:
+#
+setvar.___ CONF_C89 "$CONF_C89" || status=4
+setvar.___ CONF_C89X "$CONF_C89X" || status=4
+# following one is internal: for use by only by Configure modules
+setvar.___ CONF_QUICK_C89 "$CONF_QUICK_C89" || status=4
+setvar.___ CONF_QUICK_C89X "$CONF_QUICK_C89X" || status=4
+if test -n "$CONF_C89_NAME" ; then
+	setvar.___ CONF_C89_NAME "$CONF_C89_NAME" || status=4
+fi
+setvar.___ CONF_C89_PROBED "$status" || status=4
+
+exit "$status"

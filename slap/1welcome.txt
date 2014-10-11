@@ -1,0 +1,51 @@
+ [Image] [up] [next]                   [Image]                [Hitometer]
+
+                                        [Image]
+
+slap is a UNIX print-driver program for all models of Seiko Instruments'
+Smart Label Printer ®.
+
+Seiko Instruments do not provide software or drivers for UNIX platforms. But
+I do!
+
+The current release of slap is 2.4.4, dated 9th February 2001.
+
+Latest News - version 2.4.4
+
+   * Added baud-rate mapping schemes to enable use of SLP-100, SLP-200 and
+     SLP-240 printers on (some) platforms that do not provide 57600 baud
+     facility in their native programming interfaces. Also fixed typos that
+     prevented compilation on all such systems.
+   * Fixed occasional comms crash for SLP-EZ30, SLP-Plus and SLP printers.
+   * Fixed "missing last half-dot" for SLP-EZ30, SLP-Plus and SLP printers.
+   * Fixed theoretical sequencing bug in the recovery-from-printer-error
+     logic.
+   * Added documents describing how to use additional fonts with slap, and
+     how to print barcodes.
+
+Coming Next!
+
+   * Full modularisation into separate programs: low-level bitmap printer,
+     text-rendering front-ends for various font types, GUI front-ends, and
+     so on. This will also enable full PostScript capabilities, by using
+     GhostScript as a preprocessor. Thanks to Andreas Kostyrka and Don Smith
+     for ideas and inspiration.
+
+----------------------------------------------------------------------------
+
+   * What is a Smart Label Printer?  What is slap?  Why do I need it?
+
+   * Which printer models are supported?
+
+   * Which host platforms are supported?
+
+   * Is it free? Copyright, Licence and Warranty.
+
+   * Download
+
+   * Installation Guide
+
+   * Printing via the UNIX Print Spooler
+
+----------------------------------------------------------------------------
+ [Image] [up] [next]                [Image]              [home]  [mail me]

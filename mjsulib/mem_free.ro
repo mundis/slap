@@ -1,0 +1,52 @@
+'\" t
+.\" MJS Portable C Library
+.\" Module: quick-reference manual-page for mem_free()
+.\"
+.\" Copyright (c) 1989, 1994 Mike Spooner
+.\"----------------------------------------------------------------------
+.\" This program is free software; you can redistribute it and/or modify
+.\" it under the terms of the GNU General Public License as published by
+.\" the Free Software Foundation; either version 2 of the License, or
+.\" (at your option) any later version.
+.\"
+.\" This program is distributed in the hope that it will be useful,
+.\" but WITHOUT ANY WARRANTY; without even the implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+.\" GNU General Public License for more details.
+.\"
+.\" You should have received a copy of the GNU General Public License
+.\" along with this program; if not, write to the Free Software
+.\" Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+.\"----------------------------------------------------------------------
+.TD
+.TH mem_free @LF 14feb94 "MJSulib"
+.SH NAME
+mem_free \- deallocate storage space on the heap, returning a sentinel
+.SH SYNOPSIS
+#include "mjsu.h"
+
+VOID *mem_free(VOID *old);
+.SH DESCRIPTION
+\fBmem_free()\fP 
+deallocates the previously allocated cell of heap memory
+pointed-to by \fIold\fP.
+.SH RETURNS
+\fBmem_free()\fP always returns NULL, which is a common sentinel value
+for invalid or unused pointers.
+.SH EXAMPLE
+To deallocate a heap cell and mark it's pointer as invalid:
+.nf
+ 
+	ptr = mem_free(ptr);
+ 
+.fi
+.SH SEE ALSO
+\fBmem_buy()\fP,
+\fBmjsu(@MI)\fP.
+
+\fBfree()\fP,
+as defined by ANSI X3.159-1989.
+.SH AVAILABILITY
+\fBmem_free()\fP
+is written in C,
+conforming to ANSI X3.159-1989 (hosted program environment).

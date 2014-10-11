@@ -1,0 +1,199 @@
+#!/bin/sh
+# @(#)ksh.cmd	3.0	17may2009 MJS
+#------------------------------------------------------------------------------
+# 3.0   17may2009 MJS   compatibility with new "soft/hard" Configure mechanism,
+#                       also removal of temp files on interrupt.
+# 2.0   27sep2004 MJS   revised to be used as a Configure-callable module.
+# 1.0   25jul1999 MJS   original version.
+#------------------------------------------------------------------------------
+#
+#desc: Determine the absolute pathname of a *generic* Korn-Shell interpreter;
+#desc: thus this helper is only for use in configuring software that will
+#desc: tolerate *any* Korn shell, in spite of the many well-known and
+#desc: not-so-well-known differences between various Korn-Shell
+#desc: implementations; ie: use for Korn scripts that are portable between
+#desc: ksh88, ksh90 (SVR4), ksh93, pdksh, the CDE Desktop Korn Shell (dtksh),
+#desc: et al.
+#desc:
+#desc: 'Configure' variables: CONF_KSH
+#desc:
+#desc: The equivalent makefile variables (if any) have the same names without
+#desc: the leading 'CONF_'.
+
+#opt: -ksh=PATHNAME
+#opt: 	specifies the pathname of a Korn-Shell interpreter, the default
+#opt:	is to search for one.
+
+#out: relevant "makefile" variable-definitions.
+
+
+eval status='$CONF_KSH_PROBED'
+test -n "$status" && exit "$status"
+. mod.start
+
+############################################################################
+#########         module-specific '-configure' actions          ############
+############################################################################
+status=1	# until proven otherwise
+
+. "$my_full_dirname"/cmn_bin_dirs	# determine bin dirs
+
+
+# module-specific standing data values for 'cmd' modules:
+#
+use_sys_dirs=N		# search system bin dirs as well as standard places?
+use_compat_dirs=N	# search compatibility bin dirs as well?
+use_env_dirs=Y		# search $PATH as well as standard places?
+files="ksh:pdksh:ksh93:dtksh"
+# can also try "wksh" if not on Irix:
+case "`uname -s 2>/dev/null`" in
+Irix*)	;;
+*)	files="$files:wksh" ;;
+esac
+# on some systems, "sh" is actually ksh93, so we include it as a last-chance
+files="$files:sh"
+
+
+
+# process additional 'Configure' command-line flags:
+#
+CONF_KSH=''
+for flag in "$@" ; do
+	case "$flag" in
+	-ksh=*|--ksh=*)
+		CONF_KSH="`echo $flag | sed -e 's/^[^=]*=//'`"
+		test -z "$CONF_KSH" && exec "$my_full_pathname" -help
+		;;
+	esac
+done
+
+# setup list of "normal" dirs to use if searching...
+dirs="$CONF_STDBINS"
+# in preferred priority order!:
+test "$use_sys_dirs" = Y && dirs="$dirs:$CONF_SYSBINS"
+test "$use_env_dirs" = Y && dirs="$dirs:$PATH"
+test "$use_compat_dirs" = Y && dirs="$dirs:$CONF_SCPBINS"
+
+if test -n "$CONF_KSH" ; then
+	case "$CONF_KSH" in
+	*/*)	# absolute or relative, use dir component exclusively
+		dirs=`expr //"$CONF_KSH" : '//\(.*\)/.*'`
+		files=`expr //"$CONF_KSH" : '//.*/\(.*\)'`
+		;;
+	*)	# unqualified, use normal dirs
+		files="$CONF_KSH"
+		;;
+	esac
+fi
+
+
+trap "trap '' 1 2 3 13 15 ; rm -f /tmp/$$.* ; exit 4" 1 2 3 13 15
+
+# create a Korn-shell script that will do the right thing *only*
+# for ksh88-compatible shells and pdksh 5.x, making sure that
+# Bash, zsh, Bourne Shell, (unreleased) ksh86 et al are excluded...
+#
+cat > /tmp/$$.in <<'EOT'
+	# script to separate Korn from non-Korn and even from nearly-Kornish
+	alias decimal='typeset -i10' || return 1
+	alias | grep typeset >/dev/null || return 1
+	typeset me="$0" || return 1
+	typeset -r me || return 1
+	set -o notify
+	[[ -o notify ]] || return 1
+	decimal v=0 x=1234 y=16#10 9>&2 8>&9 9>&- || return 1
+	v=$(( $(print -r -- $PPID) + ${x##123} + 12 - $y )) || return 1
+	unset x y || return 1
+	typeset -Z3 z=1 || return 1
+	[[ "$z" = 001 ]] || return 1
+	type fc | grep 'uilt' >/dev/null || 
+	type fc | grep 'lias' >/dev/null || return 1
+	[ -r /dev/null ] && print -rn -- $(</dev/null) || return 1
+	[[ "$0" -ef "$me" ]] || return 1
+	func()
+		{
+		[ "${LINENO:?}" -gt 0 ] || return 1
+		# co-process without triggering early ksh93/dtksh reaping bug
+		print -r -- "${v}X" |&
+		while read -rp line ; do
+			print -r -- "${line%X}"	# computation to stdout
+		done
+		return 0
+		}
+	func && return 0
+	exit 1 # make sure nearly-Kornish shells **cannot** give success
+EOT
+
+
+found=''
+oldIFS="$IFS"
+IFS=':'
+for f in $files ; do
+	for d in $dirs '' ; do
+		##echo "dir [ $d ]"
+		IFS="$oldIFS"
+		case "$d" in
+		/*)	# absolute
+			;;
+		''|'.')	# implicit $pwd, ignore
+			continue
+			;;
+		*)	# relative, make absolute
+			if test "$pwd" = / ; then
+				d="/$d"		# See POSIX.1 Appendix B
+			else
+				d="$pwd/$d"
+			fi
+			;;
+		esac
+		##echo "try [ $d/$f ]"
+		exec 9>&2 2>/dev/null
+		v=`"$d/$f" -s < /tmp/$$.in`
+		exec 2>&9
+		IFS=':'
+
+		test "$v" = $$ && found="$d/$f" && status=0 && break 2
+	done
+done
+IFS="$oldIFS"
+rm -f /tmp/$$.in
+
+if test -z "$found" ; then	# still not set!
+	announce="not found"
+	test -n "$CONF_KSH" && \
+		announce="$announce, or specified $CONF_KSH is not compatible"
+	CONF_KSH=...
+	status=2
+else
+	announce="$found"
+	CONF_KSH="$found"
+	status=0
+fi
+
+
+# emit makefile-segment to stdout:
+#
+cat <<EOT
+
+# Absolute pathname of a generic (ksh88- or pdksh5-compatible) Korn shell...
+# Note: the GNU "Bourne-Again" shell (bash) is not suitable, nor are
+# many versions of zsh.
+#
+# NOTE: there are a few differences between ksh88 and pdksh5, which are
+# presumed well-known: scripts that are to be processed with the program
+# named by KSH here, must be written in such a way that such differences
+# are tolerated.
+#
+KSH=$CONF_KSH
+
+EOT
+
+# and set 'Configure' variables:
+#
+setvar.___ CONF_KSH "$CONF_KSH"
+setvar.___ CONF_KSH_PROBED "$status"
+
+# and annouce results:
+echo "generic Korn shell: $announce" 1>&2
+
+exit "$status"

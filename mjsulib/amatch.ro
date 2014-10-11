@@ -1,0 +1,93 @@
+'\" t
+.\" MJS Portable C Library
+.\" Module: quick-reference manual-page for amatch()
+.\"
+.\" Copyright (c) 1991-1993 Mike Spooner
+.\"----------------------------------------------------------------------
+.\" This program is free software; you can redistribute it and/or modify
+.\" it under the terms of the GNU General Public License as published by
+.\" the Free Software Foundation; either version 2 of the License, or
+.\" (at your option) any later version.
+.\"
+.\" This program is distributed in the hope that it will be useful,
+.\" but WITHOUT ANY WARRANTY; without even the implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+.\" GNU General Public License for more details.
+.\"
+.\" You should have received a copy of the GNU General Public License
+.\" along with this program; if not, write to the Free Software
+.\" Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+.\"----------------------------------------------------------------------
+.TD
+.TH amatch @LF "22jun93" "MJSulib"
+.SH NAME
+amatch \- look for anchored match of regular expression
+.SH SYNOPSIS
+.nf
+#include "mjsu.h"
+
+BOOL amatch(CHAR *buf, UINT n, UINT idx, UINT *nmindx,
+					USHORT *pat, TAGMATCH *psubs);
+.fi
+.SH DESCRIPTION
+\fBamatch()\fP tests the \fIn\fP 
+character buffer starting at \fIbuf\fP[\fIidx\fP] for a match with
+the encoded pattern starting at \fIpat\fP;
+the match is constrained to match characters starting 
+at \fIbuf\fP[\fIidx\fP].
+.LP
+It is assumed that the encoded 
+pattern was built by the function \fBpattern()\fP,
+whose manual page describes the notation for regular expressions
+accepted by these routines.
+.LP
+The type TAGMATCH is a structure declared in the header file \fBmjsu.h\fP,
+thus:
+.nf
+
+	typedef struct 
+		{
+		UINT mlen;
+		CHAR *mtext;
+		} TAGMATCH;
+
+.fi
+If (\fIpsubs\fP is not NULL) then every balanced pair \\(\|.\|.\|.\|\\)
+within the
+pattern will have the substring it matches recorded 
+at \fIpsubs\fP[\fIi\fP],
+where \fIi\fP counts up from one for the leftmost "\\(" in the pattern.
+Upto 10 such "tagged expressions" are acceptable; surplus ones are ignored.
+\fIpsubs\fP[\fIi\fP].\fImtext\fP points at the first character of the matching
+substring, and \fIpsubs\fP[\fIi\fP].\fImlen\fP is its length.
+\fIpsubs\fP[0] always records the full match.
+.SH RETURNS
+If the match was successful,
+\fBamatch()\fP returns YES and sets \fI*nmidx\fP to the index 
+of the first character in buf that was not matched.
+Otherwise \fBamatch()\fP returns NO.
+The array at psubs is also filled in, if present.
+.SH EXAMPLE
+To find input lines starting with a pattern specified by
+the first command line argument,
+and output matching lines to stdout:
+.nf
+
+	if (pattern(patbuf, '\\0', *av))
+		{
+		while (fgets(buf, BUFSIZ, stdin))
+			{
+			if (amatch(buf, n, 0, &junk, patbuf, NULL))
+				fputs(buf, stdout);
+			}
+		}
+
+.fi
+.SH SEE ALSO                     
+\fBmatch(@LF)\fP, \fBpattern(@LF)\fP,
+\fBmjsu(@MI)\fP
+.SH AVAILABILITY
+\fBamatch()\fP is written in C, conforming to ANSI X3.159-1989.
+.SH BUGS
+Closures (regular expression of "*") 
+will not work properly unless \fIbuf\fP is terminated by a newline.

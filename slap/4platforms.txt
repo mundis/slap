@@ -1,0 +1,95 @@
+ [previous] [up]  [next]          [Image]          [Image] [Image] [Image]
+
+                             Which platforms are
+                                 supported?
+
+slap should work on almost every UNIX and UNIX-like operating-system
+released since 1992, and several older ones too!
+
+----------------------------------------------------------------------------
+
+General Requirements
+
+To build slap from source, you need:
+
+   * a host system that provides the POSIX 1003.1 API (IEEE Std 1003.1-1988)
+     - basically, any recent UNIX or similar system.
+   * an ANSI C compiler
+   * the MJS Utility C Library
+   * a make utility (System-V, BSD, GNU, or any other flavour)
+
+To drive the SLP-100, SLP-200 and SLP-240 printers, your system must support
+57600 baud serial-port operations in it's programming interface. The
+command:
+
+     slap -version
+
+will tell you if the system supports 57600 baud in general, but note that
+some systems that do not normally allow 57600 baud, can do so for specific
+types of serial-port: see the manpage for details.
+----------------------------------------------------------------------------
+
+Tested Platforms
+
+   * Solaris 2.x
+
+     slap has been tested on Solaris/SPARC 2.4, 2.5, 2.5.1, 2.6, 7 and 8;
+     built with both the SunPro C compiler and the GNU C compiler.
+
+     A wide variety of Sun SPARC systems and clones have been used, ranging
+     from an ancient SPARCstation-2 clone up to a 14-CPU Enterprise 6000
+     (Sunfire).
+
+     Various serial-port configurations have been used: the built-in serial
+     ports, a Magma 8SP plug-in SBus 8-port serial card, and even a Central
+     Data EtherLite network port-server.
+
+   * Linux/x86
+
+        o Slackware Linux 2 (kernel 1.0.14)
+        o Slackware Linux 3.0.0 (kernel 1.2.38)
+        o RedHat Linux 4.1 (kernel 2.0.27)
+        o RedHat Linux 6.0 (kernel 2.2.6)
+
+     The test systems were all home-brew PCs.
+
+     Various serial-port configurations were tried: on-board serial-ports
+     with 16550AF- and 16450-compatible controllers, 16-bit ISA plug-in
+     serial card with NatSemi 16450 controllers, and an 8-bit ISA plug-in
+     serial card with Intel 8250 controllers.
+
+   * Irix 5.3 on SGI Indigo (4D-RPC)
+
+     Using the onboard serial-port.
+
+----------------------------------------------------------------------------
+
+Platforms Verified by Others
+
+   * Solaris/x86 2.6, using the GNU C compiler, on a Dell PC
+   * Solaris/x86 7 and 8, using the GNU C compiler, on various PCs
+   * Mandrake Linux 7, using the GNU C compiler, on various PCs
+   * Irix 5.x, using the Irix C compiler, on an SGI Indy (4D-???)
+   * AIX 4.1.5 through 4.3.3, using the GNU C compiler, on IBM RS/6000
+   * DYNIX/ptx 1.3, using Sequent ANSI C compiler, on an old Sequent ELS
+   * SPIF (stc) serial-ports under Solaris/SPARC
+
+----------------------------------------------------------------------------
+
+Volunteers?
+
+It would be handy if someone would volunteer to test other systems and
+hardware, especially:
+
+   * OpenBSD and NetBSD
+   * BSD 4.4
+   * HP-UX (using the HP C Compiler)
+   * Apple Macintosh running A/UX
+   * QNX, because it's different
+   * IDRIS or transIDRIS, for old times' sake
+   * Sun Enterprise 10000 (Starfire), just so I can show off!
+
+   * PCMCIA serial-ports under Linux and Solaris
+
+----------------------------------------------------------------------------
+ [previous] [up]  [next]              [Image]            [home]  [mail me]

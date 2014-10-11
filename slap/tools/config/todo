@@ -1,0 +1,25 @@
+The indentation reflects dependancies, eg: to get the settings needed
+to build CDE programs, you would need to invoke x11.api, motif.api and
+cde.api, in that order.
+
+
+tli.api		# the SVR4 "transport-layer-interface"
+
+pthread.api	# POSIX threads API, aka POSIX.1c (previously POSIX.4)
+
+curses.api
+
+x11.api		# only the -I and -L settings for the common "low-level" APIs
+		# (Xlib, Xt, Athena widgets, Xmu, etc); the -l flags needed
+		# will be presumed well-known (and common!). 
+	motif.api
+		cde.api
+	xview.api	# including the OpenLook substrate
+
+nis2.api	# aka Sun YP
+
+nis3.api	# aka NIS+
+
+sunrpc.api
+
+

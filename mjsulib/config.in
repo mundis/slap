@@ -1,0 +1,6 @@
+default CONF_INSTALL_DIR =	$HOME
+
+append makefile		using	tools/config/install_dir
+append makefile		using	tools/config/c89_cmd
+append makefile		using	tools/config/static_lib		
+append makefile		using	tools/config/makewhatis_cmd

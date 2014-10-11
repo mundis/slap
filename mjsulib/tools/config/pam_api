@@ -1,0 +1,166 @@
+#!/bin/sh
+# @(#)pam.api	1.0	10mar2012 MJS
+#------------------------------------------------------------------------------
+# 1.0	10mar2012 MJS	original version.
+#------------------------------------------------------------------------------
+capi_name=PAM
+capi_desc="Pluggable Authentication Modules"
+capi_enablers=''		# API enablers
+capi_indicators=''		# API-defined indicators
+capi_clevels="89 89X 99"
+
+
+# any additional or platform-specific extra C-compiler flags we may require:
+capi_try_cflags=""
+capi_try_ldflags=''
+capi_try_libs='-lpam'
+
+# any other APIs we depend on:
+capi_dep_cflags=''
+capi_dep_ldflags=''
+capi_dep_libs=''
+
+#desc: Determine the C-compiler flags needed to get the
+#desc: $capi_desc API, if available.
+#desc:
+#desc: If the API is not available, $0 returns failure and
+#desc: the C symbol $capi_indicator will be undefined.
+
+#cvar: CONF_${capi_name}_CFLAGS/_LDFLAGS/_LIBS
+
+#out: relevant "makefile" variable-definitions.
+
+
+eval status='$CONF_'"${capi_name}"'_PROBED'
+test -n "$status" && exit "$status"
+. mod.start
+
+
+# build a small POSIX.1-1988 ANSI C source file that can distinguish
+# POSIX.1-1988 from pre-POSIX or almost-but-not-really-POSIX environments...
+#
+cat > /tmp/$$.c <<'EOT'
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+#include <security/pam_appl.h>
+
+static char passwd[PAM_MAX_RESP_SIZE+1] = "?";
+static char *me = "?";
+
+int converse(int num_msg, const struct pam_message **msg,
+	struct pam_response **resp, void *appdata_ptr)
+	{
+	const struct pam_message *m = *msg;
+	struct pam_response *r;
+	int i;
+
+	if ((num_msg < 0) || (num_msg >= PAM_MAX_NUM_MSG))
+		{
+		fprintf(stderr, "%s: invalid number of PAM messages\n", me);
+		*resp = NULL;
+		return (PAM_CONV_ERR);
+		}
+
+	if (!(*resp = r = calloc(num_msg, sizeof(*r))))
+		{
+		fprintf(stderr, "%s: out of memory\n", me);
+		return (PAM_BUF_ERR);
+		}
+
+	#ifdef DEBUG
+	fprintf(stderr, "conversing!\n");
+	#endif
+
+	for (i = 0; i < num_msg; ++i)
+		{
+		switch (m->msg_style)
+			{
+		case PAM_PROMPT_ECHO_OFF:
+			#ifdef DEBUG
+			fprintf(stderr, "prompt: echo off\n");
+			#endif
+			r->resp = strdup(passwd);
+			r->resp_retcode = 0;
+			#ifdef DEBUG
+			fprintf(stderr, "using [%s]\n", r->resp);
+			#endif
+			++m;
+			++r;
+			break;
+		case PAM_PROMPT_ECHO_ON:
+			#ifdef DEBUG
+			fprintf(stderr, "prompt: echo on\n");
+			#endif
+			r->resp = strdup(passwd);
+			r->resp_retcode = 0;
+			#ifdef DEBUG
+			fprintf(stderr, "using [%s]\n", r->resp);
+			#endif
+			++m;
+			++r;
+			break;
+		case PAM_ERROR_MSG:
+			#ifdef DEBUG
+			if (m->msg)
+				fprintf(stderr, "%s error: %s\n", me, m->msg);
+			#endif
+			r->resp = NULL;
+			r->resp_retcode = 0;
+			++m;
+			++r;
+			break;
+		case PAM_TEXT_INFO:
+			#ifdef DEBUG
+			if (m->msg)
+				printf("%s notice: %s\n", me, m->msg);
+			#endif
+			r->resp = NULL;
+			r->resp_retcode = 0;
+			++m;
+			++r;
+			break;
+		default:
+			#ifdef DEBUG
+			fprintf(stderr, "%s oops: bad msg style\n", me);
+			#endif
+			return (PAM_CONV_ERR);
+			}
+		}
+
+	#ifdef DEBUG 
+	fprintf(stderr, "conversation done\n");
+	#endif
+
+	return (PAM_SUCCESS);
+	}
+
+static struct pam_conv myconv = 
+	{
+	(int (*)()) converse,
+	NULL
+	};
+
+int main(int ac, char **av)
+	{
+	const char *username = "?", *service = "other";
+	int status, n;
+	pam_handle_t *p;
+
+	me = *av;
+	myconv.appdata_ptr = malloc(1);
+
+	strcpy(passwd, "...");
+	for (n = strlen(passwd) - 1; (n >= 0) && !isprint(passwd[n]); --n)
+		passwd[n] = '\0';
+
+	status = pam_start(service, username, &myconv, &p);
+	if (status == PAM_SUCCESS)
+		status = pam_authenticate(p, PAM_DISALLOW_NULL_AUTHTOK);
+	pam_end(p, status);
+	return (EXIT_SUCCESS);
+	}
+EOT
+
+. mod.capisearch

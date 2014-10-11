@@ -1,0 +1,156 @@
+#!/bin/sh
+# @(#)nawk.cmd	3.0	17may2009 MJS
+#------------------------------------------------------------------------------
+# 3.0   17may2009 MJS   compatibility with new "soft/hard" Configure mechanism,
+#                       also removal of temp files on interrupt.
+# 2.0   27sep2004 MJS   revised to be used as a Configure-callable module.
+# 1.0   03jan2001 MJS   original version.
+#------------------------------------------------------------------------------
+#
+#desc: Determine the absolute pathname of an interpreter compatible with
+#desc: POSIX.2 "awk", such as gawk, mawk, SVR4 nawk, XPG4 awk, and so on.
+#desc: et al.
+#desc:
+#desc: 'Configure' variables: CONF_NAWK
+#desc:
+#desc: The equivalent makefile variables (if any) have the same names without
+#desc: the leading 'CONF_'.
+
+#opt: -nawk=PATHNAME
+#opt: 	specifies the pathname of the interpreter; the default
+#opt:	is to search for a suitable one.
+
+#out: relevant "makefile" variable-definitions.
+
+
+eval status='$CONF_NAWK_PROBED'
+test -n "$status" && exit "$status"
+. mod.start
+
+
+############################################################################
+#########         module-specific '-configure' actions          ############
+############################################################################
+# NOTE: 'Configure' variables *must* be set with the setvar.___ program, to
+# ensure that other modules can see them.
+
+. "$my_full_dirname"/cmn_bin_dirs   # determine bin dirs
+
+# module-specific standing data values for 'cmd' modules:
+#
+use_sys_dirs=N		# search system bin dirs as well as standard places?
+use_compat_dirs=N	# search compatibility bin dirs as well?
+use_env_dirs=Y		# search $PATH as well as standard places?
+files="nawk:gawk:mawk:awk"
+
+
+status=2	# until proven otherwise
+
+# process additional 'Configure' command-line flags:
+#
+CONF_NAWK=''
+for flag in "$@" ; do
+	case "$flag" in
+	-nawk=*|--nawk=*)
+		CONF_NAWK="`echo $flag | sed -e 's/^[^=]*=//'`"
+		test -z "$CONF_NAWK" && exec "$my_full_pathname" -help
+		;;
+	esac
+done
+
+# setup list of "normal" dirs to use if searching...
+dirs="$CONF_STDBINS"
+# in preferred priority order!:
+test "$use_sys_dirs" = Y && dirs="$dirs:$CONF_SYSBINS"
+test "$use_env_dirs" = Y && dirs="$dirs:$PATH"
+test "$use_compat_dirs" = Y && dirs="$dirs:$CONF_SCPBINS"
+
+if test -n "$CONF_NAWK" ; then
+	case "$CONF_NAWK" in
+	*/*)	# absolute or relative, use dir component exclusively
+		dirs=`expr //"$CONF_NAWK" : '//\(.*\)/.*'`
+		files=`expr //"$CONF_NAWK" : '//.*/\(.*\)'`
+		;;
+	*)	# unqualified, use normal dirs
+		files="$CONF_NAWK"
+		;;
+	esac
+fi
+
+
+trap "trap '' 1 2 3 13 15 ; rm -f /tmp/$$.* ; exit 4" 1 2 3 13 15
+
+# create a "nawk" script that old "awk" will not be able to handle...
+# eg: a script that uses "gsub()"...
+#
+cat > /tmp/$$.in <<'EOT'
+        { gsub("[0-9]", ""); print $1 }
+EOT
+
+
+CONF_NAWK=''
+oldIFS="$IFS"
+IFS=':'
+for f in $files ; do
+	for d in $dirs '' ; do
+		IFS="$oldIFS"
+		##echo "dir [ $d ]"
+		case "$d" in
+		/*)	# absolute
+			;;
+		''|'.')	# implicit $pwd, ignore
+			continue
+			;;
+		*)	# relative, make absolute
+			if test "$pwd" = / ; then
+				d="/$d"		# See POSIX.1 Appendix B
+			else
+				d="$pwd/$d"
+			fi
+			;;
+		esac
+		## echo "try [ $d/$f ]" 1>&2
+		v=''
+		if test -n "$d/$f" && test -f "$d/$f" && test -x "$d/$f" ; then
+		        exec 9>&2
+			exec 2>/dev/null
+			# probe for 'gsub()':
+			v=`echo '0n1a2w3k4' | "$d/$f" -f /tmp/$$.in`
+			exec 2>&9
+		fi && test "$v" = nawk && \
+			CONF_NAWK="$d/$f" && status=0 && break 2
+		IFS=':'
+	done
+done
+IFS="$oldIFS"
+rm -f /tmp/$$.in
+
+
+# emit makefile-segment to stdout:
+#
+cat <<EOT
+
+# Absolute pathname of a POSIX.2-compatible "awk" interpreter,
+# (such as SVR4 nawk, GNU gawk, mawk or XPG4 awk;
+# old awks lacking "gsub()" et al are NOT suitable).
+#
+NAWK=$CONF_NAWK
+
+EOT
+
+# and set 'Configure' variables:
+#
+setvar.___ CONF_NAWK "$CONF_NAWK"
+setvar.___ CONF_NAWK_PROBED "$status"
+
+# and announce results:
+if test -z "$CONF_NAWK" ; then	# still not set!
+	announce="not found"
+	CONF_NAWK=...
+	status=2
+else
+	announce="$CONF_NAWK"
+fi
+echo "POSIX.2-compatible awk interpreter: $announce" 1>&2
+
+exit "$status"

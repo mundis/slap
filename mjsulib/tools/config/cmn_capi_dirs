@@ -1,0 +1,26 @@
+#!/bin/sh
+# Internal include-file helper for 'Configure' modules:
+# determine likely settings of CFLAGS and LDFLAGS for
+# the *common* C-callable libraries on the system.
+#
+# Should not be referenced in config.in, rather should be .-included by those
+# Configure modules need it.
+#
+
+if test -z "$CONF_COMMON_CAPI_DIRS_PROBED" ; then
+
+	for d in /opt/cached/PUButil /usr/sfw /opt/sfw \
+			/usr/local /opt/local \
+			/usr/xpg[0-9]* \
+			/usr/openwin /usr/X /usr/X11* /usr/dt \
+			/usr/openwin/sfw ; do
+		if test -d "$d"/include || test -d "$d"/lib ; then
+			test -n "$dirs" && dirs="$dirs:"
+			dirs="${dirs}$d"
+		fi
+	done
+
+	CONF_COMMON_CAPI_DIRS="$dirs"
+	setvar.___ CONF_COMMON_CAPI_DIRS "$dirs"
+	setvar.___ CONF_COMMON_CAPI_DIRS_PROBED 0
+fi

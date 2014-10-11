@@ -1,0 +1,32 @@
+
+
+generic ABI classes:	ILP16 IL16P20 (i86 large/huge) LP32 ILP32 LP64 ILP64
+
+ABI variations:	hwfp, swfp, default
+
+
+sparc	default=sparc (sparcv7)	alt=sparcv9
+
+ia	default=i386		alt=i86		alt=amd64	alt=em64t
+
+mips	default=mips (mips1)	alt=mips64abi
+
+s370	default=s370 (31-bit)
+
+s390	default=s390 (31-bit)	alt=s390x (64-bit)
+
+hppa	default=hppa (pa7000)	alt=?? (64-bit)
+
+alpha	default=?? (32-bit)	alt=?? (64-bit)
+
+vax	default=vax (32-bit)
+
+68k	default=68000	alt=68020	alt=68020fpu
+
+superh	default=sh (sh3)	alt=sh5
+
+mmix
+
+power	default=power (powerpc)	alt=power64
+
+

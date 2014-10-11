@@ -1,0 +1,18 @@
+# Determine the C-compiler flags (relative to XACC) needed to get
+# the "POSIX.1" API.
+# Print it as a Makefile definition to stdout, and set equivalent
+# environment variables.
+#
+
+echo "probing for POSIX.1 API" 1>&2
+
+cat << EOT
+
+# Extra C compiler flags (relative to XACC) needed to get the "POSIX.1" API,
+# expressed as -I, -L or -l flags.
+#
+STRICT_POSIX1=-D_POSIX_SOURCE
+
+EOT
+
+export STRICT_POSIX1

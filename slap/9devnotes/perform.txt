@@ -1,0 +1,131 @@
+System Make & Model:	Home-brew 486-DX2/66
+Serial-Port/UART:	16550A on expansion card via AT-bus
+Operating System:	Linux 2.0.27 (Redhat 4.1)
+UART Driver(s):		serial.c 4.13
+slap version:		2.2
+data file:		labtest.txt
+font:			areal-10
+
+
+Printer_Model:	1000P	2000	2000	120	120
+Baud_Rate:	9600	19200	38400	38400	57600
+flow-control:	poll	xon/off	xon/off	CTS	CTS
+CPU_Time:	0.20	0.48	0.40	0.11	0.10
+Elapsed_Time:	20.49	10.66	8.74	6.71	5.93
+CPU_usage:	1.0%	4.5%	4.6%	1.6%	1.7%
+
+----------------------------------------------------------------------------
+
+System Make & Model:	Home-brew Pentium-166
+Serial-Port/UART:	16550A on expansion card via AT-bus via PCI bridge
+Operating System:	Linux 2.0.27 (Redhat 4.1)
+UART Driver(s):		serial.c 4.13
+slap version:		2.2
+data file:		labtest.txt
+font:			areal-10
+
+
+Printer_Model:	1000P	2000	2000	120	120
+Baud_Rate:	9600	19200	38400	38400	57600
+flow-control:	poll	xon/off	xon/off	CTS	CTS
+CPU_Time:	
+Elapsed_Time:	
+CPU_usage:
+
+----------------------------------------------------------------------------
+
+System Make & Model:	Home-brew 386-SX/20
+Serial-Port/UART:	16450 on expansion card via AT-bus
+Operating System:	Linux 2.0.27 (Redhat 4.1)
+UART Driver(s):		serial.c 4.13
+slap version:		2.2
+data file:		labtest.txt
+font:			areal-10
+
+
+Printer_Model:	1000P	2000	2000	120	120
+Baud_Rate:	9600	19200	38400	38400	57600
+flow-control:	poll	xon/off	xon/off	CTS	CTS
+CPU_Time:	2.71	4.18	4.28
+Elapsed_Time:	21.83	13.62	11.50
+CPU_usage:	12.4%	30.1%	37.2%
+
+----------------------------------------------------------------------------
+
+System Make & Model:	Sun SPARCclassic
+Serial-Port/UART:	i8088/40 in EtherLite SL8+,
+			via cdetherd daemon,
+			via tcp via ip via le via 10Mbit/s Ethernet!
+Operating System:	Solaris 2.5
+UART Driver(s):		zs + ldterm
+slap version:		2.2
+data file:		labtest.txt
+font:			areal-10
+
+
+Printer_Model:	1000P	2000	2000	120	120
+Baud_Rate:	9600	19200	38400	38400	57600
+flow-control:	poll	xon/off	xon/off	CTS	CTS
+CPU_Time:	1.51	1.42	1.34
+Elapsed_Time:	28.94	10.46	8.21
+CPU_usage:	5.3%	13.6%	16.3%
+		(plus CPU usage for cdetherd, tcp, and ip)
+
+----------------------------------------------------------------------------
+
+System Make & Model:	Sun SPARCclassic
+Serial-Port/UART:	Zilog 8530 onboard via obio
+Operating System:	Solaris 2.5
+UART Driver(s):		zs + ldterm
+slap version:		2.2
+data file:		labtest.txt
+font:			areal-10
+
+
+Printer_Model:	1000P	2000	2000	120	120
+Baud_Rate:	9600	19200	38400	38400	57600
+flow-control:	poll	xon/off	xon/off	CTS	CTS
+CPU_Time:	1.50	1.44	1.46		1.77
+Elapsed_Time:	22.38	9.84	7.33		6.23
+CPU_usage:	6.7%	14.6%	19.9%		27.5%
+
+----------------------------------------------------------------------------
+
+System Make & Model:	Sun Ultra-1/170
+Serial-Port/UART:	Zilog 8530 onboard via SBus
+Operating System:	Solaris 2.5
+UART Driver(s):		zs + ldterm
+slap version:		2.2
+data file:		labtest.txt
+font:			areal-10
+
+
+Printer_Model:	1000P	2000	2000	120	120
+Baud_Rate:	9600	19200	38400	38400	57600
+flow-control:	poll	xon/off	xon/off	CTS	CTS
+CPU_Time:		0.18	0.17	0.22	0.19
+Elapsed_Time:		8.66	6.37	4.62	4.733
+CPU_usage:		2.1%	2.7%	4.7%	4.0%
+
+----------------------------------------------------------------------------
+
+System Make & Model:	Sun Ultra-1/170
+Serial-Port/UART:	i8088/40 in EtherLite SL8+,
+			via cdetherd daemon,
+			via tcp via ip via le via 10Mbit/s Ethernet!
+Operating System:	Solaris 2.5
+UART Driver(s):		zs + ldterm
+slap version:		2.2
+data file:		labtest.txt
+font:			areal-10
+
+
+Printer_Model:	1000P	2000	2000	120	120
+Baud_Rate:	9600	19200	38400	38400	57600
+flow-control:	poll	xon/off	xon/off	CTS	CTS
+CPU_Time:		0.10	0.12
+Elapsed_Time:		9.42	6.94
+CPU_usage:		2.1%	2.6%
+		(plus CPU usage for cdetherd, tcp, and ip)
+
+----------------------------------------------------------------------------

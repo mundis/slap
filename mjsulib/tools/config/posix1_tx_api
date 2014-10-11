@@ -1,0 +1,83 @@
+#!/bin/sh
+# @(#)posix1_tx.api	3.0	17may2009 MJS
+#------------------------------------------------------------------------------
+# 3.0	17may2009 MJS	compatibility with new "soft/hard" Configure mechanism,
+#			also removal of temp files on interrupt.
+# 2.0	27sep2004 MJS	revised to be used as a Configure-callable module.
+# 1.0	15aug1998 MJS	original version.
+#------------------------------------------------------------------------------
+capi_name=POSIX1_TX
+capi_desc="common extensions to POSIX.1 termios"
+capi_enablers=''			# API-defined enablers
+capi_indicators='CRTSCTS:B57600'	# API-defined indicators
+capi_clevels="89 99"
+
+
+# compute API-dependency flags:
+case "$@" in
+''|*-help*)
+	;;
+*)
+	chain.___ /tmp/$$.cv posix1_api "$@" && . /tmp/$$.cv
+	rm -f /tmp/$$.cv
+	;;
+esac
+capi_dep_cflags="$CONF_POSIX1_CFLAGS"
+capi_dep_ldflags="$CONF_POSIX1_LDFLAGS"
+capi_dep_libs="$CONF_POSIX1_LIBS"
+
+
+# unusual/additional/platform-specific extra C compiler flags that may be needed
+# for this API...
+#
+# The list of candidate required predefined symbols for this API is a bit
+# pathological, mainly due to different systems' interpretation of __STDC__ in
+# system header files... (darned Solaris! why didn't Sun follow the guidelines
+# for __STDC__ from Appendix B of the published POSIX.1 standard, rather than
+# inventing their own semantics for it?)
+# The *order* of the list is VERY IMPORTANT - do not mess with it.
+#
+capi_try_cflags='-D_POSIX_C_SOURCE=2:-D__EXTENSIONS__:-D__STDC__==0'
+capi_try_ldflags=''
+capi_try_libs=''
+
+
+#desc: Determines the C compiler flags needed to enable ${capi_desc},
+#desc: when such extensions are available.
+#desc:
+#desc: The $capi_desc concerned, are:
+#desc:     $capi_indicators
+#desc:
+#desc: If such extensions are not available, $0 returns failure
+#desc: and at least one of the C symbols $capi_indicators will be undefined.
+
+#cvar: CONF_${capi_name}_CFLAGS
+
+#out: relevant "makefile" variable-definitions.
+
+eval status='$CONF_'"${capi_name}"'_PROBED'
+test -n "$status" && exit "$status"
+. mod.start
+
+# build a small POSIX.1 ANSI C source file that uses B57600 and
+# CRTSCTS symbols:
+#
+cat > /tmp/$$.c <<'EOT'
+#include <unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <termios.h>    /* this is the important one! */
+
+int main(unsigned int, char **);
+
+int main(unsigned int ac, char **av)
+	{
+	#if defined(B57600) && defined(CRTSCTS)
+	return (EXIT_SUCCESS);
+	#else
+	return (EXIT_FAILURE);
+	#endif
+	}
+EOT
+
+. mod.capisearch

@@ -1,0 +1,22 @@
+To produce a source distribution, in all the formats specified in "dist.info",
+with each format (eg: .tar, .zip, .tgz, etc) as a distinct single file in the
+directory /aaa:
+
+	cd {top_level_source_directory}
+	tools/dist -od /aaa
+
+To produce a UNIX SVR4 binary distribution, as a datastream-format package
+(a single file) in the directory /aaa:
+
+	cd {top_level_source_directory}
+	tools/bindist.svr4 -ds -od /aaa
+
+To produce a UNIX SVR4 binary distribution, as a filesystem-format package
+(a subdirectory) in the directory /aaa:
+
+	cd {top_level_source_directory}
+	tools/bindist.svr4 -fs -od /aaa
+
+For more details on the two SVR4 package formats, run:
+
+	tools/bindist.svr4 --help

@@ -1,0 +1,69 @@
+'\" t
+.\" MJS Portable C Library
+.\" Module: quick-reference manual-page for cpystr()
+.\"
+.\" Copyright (c) 1989-1991 Mike Spooner
+.\"----------------------------------------------------------------------
+.\" This program is free software; you can redistribute it and/or modify
+.\" it under the terms of the GNU General Public License as published by
+.\" the Free Software Foundation; either version 2 of the License, or
+.\" (at your option) any later version.
+.\"
+.\" This program is distributed in the hope that it will be useful,
+.\" but WITHOUT ANY WARRANTY; without even the implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+.\" GNU General Public License for more details.
+.\"
+.\" You should have received a copy of the GNU General Public License
+.\" along with this program; if not, write to the Free Software
+.\" Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+.\"----------------------------------------------------------------------
+.TD
+.TH cpystr @LF "17mar91" "MJSulib"
+.SH NAME
+cpystr \- copy multiple strings
+.SH SYNOPSIS
+#include "mjsu.h"
+
+CHAR *cpystr(CHAR *dest, \|.\|.\|.\|);
+.SH DESCRIPTION
+\fBcpystr()\fP concatenates a series of strings (pointed-to 
+by the arguments \|.\|.\|.\|) into the destination string at \fIdest\fP.
+The list of source strings is terminated by a NULL pointer.
+.LP
+Similar functionality can be obtained by using \fBstrcpy()\fP followed by
+repeated calls to
+\fBstrcat()\fP, but using \fBcpystr()\fP is more convenient and often
+more time-efficient.
+.SH RETURNS
+\fBcpystr()\fP returns a pointer to the terminating '\\0' of the constructed
+destination string. This return value is extremely handy for subsequent
+appends to \fIdest\fR. 
+.SH EXAMPLE
+To build a concatenation of three strings:
+.nf
+
+	CHAR line[BUFSIZ], *p;
+	CHAR  head[BUFSIZ], middle[BUFSIZ], tail[BUFSIZ];
+	
+	/* the one-shot method:
+	 */
+	cpystr(line, head, middle, tail, NULL);
+
+	/* the gradual method:
+	 */
+	p = cpystr(line, head, NULL);
+	p = cpystr(p, middle, NULL);
+	cpystr(p, tail, NULL);
+	
+	/* the nested method:
+	 */
+	cpystr(cpystr(cpystr(line, head, NULL), middle, NULL), tail, NULL);
+	
+.fi
+.SH SEE ALSO
+\fBmjsu(@MI)\fP.
+
+\fBstrcpy()\fP and \fBstrcat()\fP, as defined by ANSI X3.159-1989.
+.SH AVAILABILITY
+\fBcpystr()\fP is written in C, conforming to ANSI X3.159-1989.

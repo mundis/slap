@@ -1,0 +1,39 @@
+# Try to determine if tcdrain() DEFINATELY works properly on this system.
+# Print it as a Makefile definition to stdout, and set equivalent
+# environment variables.
+#
+
+echo "guessing whether tcdrain() is broken on this system" 1>&2
+
+# It is impractical to test this with runtime probes, so we have to
+# resort to selection based on system identification:
+#
+case `uname -s -r` in
+
+	SunOS?5.*)
+		TCDRAIN_MAYBE_BROKEN=0
+		;;
+	Linux*|Irix?5.*|*)
+		TCDRAIN_MAYBE_BROKEN=1
+		;;
+esac
+
+cat << EOT
+
+# Several platforms are known to provide a broken implementation of "tcdrain()".
+# POSIX 1003.1 mandates that tcdrain() must not return until all queued
+# output (at the time of the call) has been physically transmitted.
+# However, under Linux, Irix 5.x, et al, tcdrain() merely initiates the
+# transmission and returns before the transmission has actually completed.
+#
+# If your platform has this fault, or you are not sure, define
+# TCDRAIN_MAYBE_BROKEN with the value 1, else 0.
+#
+# Setting TCDRAIN_MAYBE_BROKEN to 1 does not change program functionality,
+# but will make the program execute baud-rate changes more slowly.
+#
+TCDRAIN_MAYBE_BROKEN=$TCDRAIN_MAYBE_BROKEN
+
+EOT
+
+export TCDRAIN_MAYBE_BROKEN

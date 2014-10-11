@@ -1,0 +1,147 @@
+#!/bin/sh
+# @(#)static.lib	3.0	17may2009 MJS
+#------------------------------------------------------------------------------
+# 3.0   17may2009 MJS   compatibility with new "soft/hard" Configure mechanism,
+#                       also removal of temp files on interrupt.
+# 2.0   27sep2004 MJS   revised to be used as a Configure-callable module.
+# 1.0   03jan2001 MJS   original version.
+#------------------------------------------------------------------------------
+#
+#desc: Determines the commands used to contruct static-link-libraries, and the
+#desc: filename-extension used for static-link-libraries.
+#desc:
+#desc: 'Configure' variables: CONF_AR CONF_RANLIB CONF_SLL
+#desc:
+#desc: The equivalent makefile variables (if any) have the same names without
+#desc: the leading 'CONF_'.
+
+#out: relevant "makefile" variable-definitions.
+
+
+eval status='$CONF_SLL_PROBED'
+test -n "$status" && exit "$status"
+. mod.start
+
+############################################################################
+#########         module-specific '-configure' actions          ############
+############################################################################
+status=0	# unless proven otherwise
+
+if test -z "$CONF_SLL" || test -z "$CONF_AR" || test -z "$CONF_RANLIB" ; then
+
+	# locate an ANSI C compiler, if not already:
+	#
+	if test -z "$CONF_C89" ; then
+		chain.___ /tmp/$$.cv c89_cmd -configure "$@" &&
+			. /tmp/$$.cv
+		rm -f /tmp/$$.cv
+	fi
+
+	# build a small C source file:
+	#
+	cat > /tmp/$$.c << 'EOT'
+#include <stdio.h>
+int main(ac, av)
+	int ac;
+	char **av;
+	{
+	printf("hello world\n");
+	return (0);
+	}
+EOT
+	
+	# determine filename extension for static-link libraries:
+	#
+	CONF_SLL=''
+	# Start hunting with the obvious directories:
+	list="/lib /usr/lib /usr/local/lib /opt/local/lib /opt/lib"
+	# add contents of LD_LIBRARY_PATH:
+	list="$list `echo ${LD_LIBRARY_PATH}: | sed -e 's/:/ /g'`"
+	# and finish with the outside chances:
+	list="$list /etc/lib $HOME/lib"      # you never know...
+	for d in $list ; do
+		test -d "$d" && \
+			ls $d | grep '\.a$' >/dev/null && \
+				CONF_SLL=a
+	done
+	
+	# determine commands to build static-link libraries:
+	#
+	CONF_AR=''
+	CONF_RANLIB='tools/nothing'	# unless proved otherwise
+	if test -n "$CONF_C89" && \
+		$CONF_C89 -c -o /tmp/$$.o /tmp/$$.c >/dev/null 2>&1 ; then
+
+		for try in 'ar -rcs' 'ar -rc' 'ar rcs' 'ar rc' ; do
+			if $try /tmp/$$.$CONF_SLL /tmp/$$.o 2>/dev/null ; then
+				CONF_AR="$try"
+				if ranlib /tmp/$$.$CONF_SLL 2>/dev/null ; then
+					CONF_RANLIB=ranlib
+				fi
+				break
+			fi
+		done
+	else
+		status=2
+	fi
+	rm -f /tmp/$$.c /tmp/$$.o /tmp/$$."$CONF_SLL"
+
+	if test -z "$CONF_SLL" || test -z "$CONF_AR" ; then
+		status=2
+		test -z "$CONF_SLL" && CONF_SLL='...'
+		test -z "$CONF_AR" && CONF_AR='...'
+		test -z "$CONF_RANLIB" && CONF_RANLIB='...'
+		test "$status" -lt 1 && status=1
+		alert.___ ERROR \
+			Cannot determine how to build \
+			static-link libraries \
+			. on this system. \
+			. . You may need to manually adjust one \
+			or more of the following \
+			. settings in the makefile generated \
+			by this script: . \
+			.. SLL="$CONF_SLL" \
+			.. AR="$CONF_AR" \
+			.. RANLIB="$CONF_RANLIB"
+	fi
+fi
+
+# emit makefile-segment to stdout:
+#
+cat << EOT
+
+# The filename extension used for static-link libraries:
+#
+SLL=$CONF_SLL
+
+
+# Command that builds a named static-link library from
+# a specified set of files:
+#
+AR=$CONF_AR
+
+
+# Command to perform any required postprocessing on a
+# static-link library:
+#
+# If your platform does not need to postprocess static-link
+# libraries, use "tools/nothing".
+# Otherwise, "ranlib" is a good choice!
+#
+RANLIB=$CONF_RANLIB
+
+EOT
+
+# and set 'Configure' variables:
+#
+setvar.___ CONF_SLL "$CONF_SLL"
+setvar.___ CONF_AR "$CONF_AR"
+setvar.___ CONF_RANLIB "$CONF_RANLIB"
+setvar.___ CONF_SLL_PROBED "$status"
+
+# and announce results:
+echo "static-link-library file extension: .$CONF_SLL" 1>&2
+echo "create static-link-library with: $CONF_AR ..." 1>&2
+echo "reindex static-link-library with: $CONF_RANLIB ..." 1>&2
+
+exit "$status"

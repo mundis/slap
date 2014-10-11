@@ -1,0 +1,69 @@
+SOLIDITY:
+	more modules to use alert warnings when "not found" etc,
+		or perhaps have top-level Configure do it based on retvals and
+		extant optional/require tokens from config.in?
+
+RESEARCH:
+	does v7 have awk '{ print $1 }' ??
+	else how about cut -f1 ??
+	or shell read ??
+
+FRAMEWORK: all modules except c89/c99/etc
+	use CONF_???BINS when locating external commands
+	use CONF_QUICKC89 when compiling probe-progs
+
+BASIC PORTABILITY: all modules:
+	Convert "[ ... ]" conditionals into "test ..." form - done
+	cull "${name:...}" forms - done
+	cull use of shell-functions - done (eg use of trycc.___)
+
+STRICT_C89 C89 STRICT_C99 C99, and drop ansic.cmd - done
+
+FUTURE:
+	ISA variations, inc. cc-flags and fs-locations (/usr/lib/sparcv9)
+		sparc (sparcv7), sparcv9
+		mips (mips1), mipsabi64
+		ia16, ia32, amd64, em64t
+	
+cmd modules:
+	chain dirs
+	use_*: standing-data flags
+	files: standing-data flags
+
+
+
+
+The indentation reflects dependancies, eg: to get the settings needed
+to build CDE programs, you would need to invoke x11.api, motif.api and
+cde.api, in that order.
+
+
+tli.api		# the SVR4 "transport-layer-interface"
+
+Core X11 - Xlib.api	( includes Xmu and Xext )
+	xauth - Xau
+	X Pixmap - Xpm
+	ToolTalk - tt
+	(OpenLook primitives - olgx)
+	X Toolkit Intrinsics - Xt	
+  		Athena Widgets - Xaw
+		Motif 1.x -libXm.so.3, libMrm.so.3
+		Motif 2.x - libXm.so.4, libMrm.so.4
+			CDE (is linked to tt)
+		OpenLook - Xol and olgx
+	XView - runtime requires olgx!
+	Open-GL - GL, GLU, Glw (GLU and Glw might require Xt?)
+
+nis2.api	# aka Sun YP
+
+nis3.api	# aka NIS+
+
+sunrpc.api
+gtk1.api
+gtk2.api
+
+
+
+ALREADY AND CHAIN CHECKERS SHOULD CHECK FOR DUMMY VALUES!
+
+nuke trycompile!

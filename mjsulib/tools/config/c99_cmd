@@ -1,0 +1,238 @@
+#!/bin/sh
+# @(#)c99.cmd	1.0	20dec2009 MJS
+#------------------------------------------------------------------------------
+# 1.0   20dec2009 MJS   original version.
+#------------------------------------------------------------------------------
+
+#
+#desc: Determine the command-line prefixes for compiling/linking
+#desc: ISO/IEC 9899:1999 'C99' programs, both 'strict C' and
+#desc: 'C with extensions from feature-test macros' eg: -DPOSIX_SOURCE.
+#desc:
+#desc: 'Configure' variables: CONF_C99
+#desc: Private variables: CONF_QUICK_C99
+#desc:
+#desc: If CC_AGGRESSIVE is predefined, aggressive C compiler optimisations may
+#desc: be enabled, in particular inlining. Must not be used for building libs
+#desc: that provide a programmer-overridable function-implementation facility.
+#desc:
+#desc: If CC_NOSTRIP is predefined, the C compiler will be instructed to not
+#desc: strip the symbol-table from generated executables. This is only needed
+#desc: by a very few special-purpose programs, or for external debugging.
+
+#opt: -c99=STR
+#opt: specifies the name, or command-line with flags, of an ISO C99
+#opt: compiler. The default is to search for a suitable C compiler
+#opt: and flags.
+
+#out: relevant "makefile" variable-definitions.
+
+
+
+eval status='$CONF_C99_PROBED'
+test -n "$status" && exit "$status"
+. mod.start
+
+
+############################################################################
+#########	 module-specific '-configure' actions		############
+############################################################################
+
+
+#######################################################################
+#
+# If present, the environment-variable CONF_C99_NAME specifies the name
+# or command-line prefix by which to look for the compiler - and if it
+# is a pathname, $PATH is not searched. Otherwise, we try all possible
+# known or suspected compiler names/commands.
+# 
+# The typical use of CONF_C99_NAME is to allow users of machines with multiple
+# compilers installed, to specify which compiler to use. For example, if you
+# have a system-vendors C compiler installed as /usr/bin/cc, the GNU C compiler
+# installed as /usr/bin/gcc, and the Acme C compiler installed as
+# /usr/acme/bin/cc, you could preset CONF_C99_NAME in these ways:
+#
+#	value		meaning
+#	-----		-------
+#	cc		either system-vendors or Acme compiler,
+#			whichever occurs first on $PATH
+#	/usr/bin/cc	system-vendors compiler
+#	gcc		GNU compiler
+#	/usr/bin/cc -K	system-vendors compiler, but always use
+#			-K *in addition to any other flags needed to
+#			get ISO C99 semantics*.
+#
+# The script still tries to "recognise" such a named compiler, because
+# we need to be sure of precise ISO C99 semantics, which often requires
+# some additional compiler flags, and also because (if we *do*
+# recognise it) we want to generate suitably optimised code, which
+# again almost always requires extra compiler flags.
+#
+# A final "no extra flags" test also allows the invoker to specify
+# compiler-specific flags needed to get ISO C99 semantics, which allows
+# completely unrecognised C compilers to be used, eg:
+#
+#	CONF_C99_NAME="/export/whistle/bin/wcc -ansi -fnone -w2 -nobce"
+# 
+# Note, however that there is an absolute assumption that all C
+# compilers use -o to specify the name of the output file, and a weaker
+# assumption that they use -c to specify "compile to relocatable object
+# file rather than an executable file".
+#
+#######################################################################
+#
+# IMPORTANT:
+#
+# "suitably optimised" means optimised for generic CPU architectures,
+# such as "sparc" or "vax". Avoid generating code that will not run on
+# some members of a CPU family that can all run the same or a different
+# minor release of the native O/S.
+#
+# For example, when compiling code for SunOS 5.x on SPARC, we must
+# not generate "sparcv9" code, because it will *not run* on some SPARC
+# systems (eg: SS20, Ultra-1/170) even if they are running SunOS 5.7.
+# In such a case, the best bet is usually to generate plain "sparc"
+# code, which will run on all SPARC systems, and still pretty darned
+# fast on the latest hardware. More to the point, it will run on
+# SunOS 5.1 if needed.
+#
+# In the case of PC-Linux, the compiler code-generation option "i486"
+# does not prevent the code running on 386 machines - it just runs
+# a *tiny* bit slower on them, so i486 code-generation would be OK.
+# Conversely, "i586" code generation can impose quite a severe speed
+# penalty on 386 and 486 systems, so we avoid it.
+#
+# Some compilers allow you to optimise for specific L1- and L2-cache
+# properties such as line-size, associativity, size, timing properties,
+# number of CPUs, cache-sharing protocol, et al. For instance, the
+# SunPro 4.x C compiler has options like -xtarget=ss10/612
+# (ie: SPARCstation-10 model 612, as opposed to the models
+# 40/51/512/712/etc), or even -xtarget=native.
+# Obviously, optimising like that is *not* "suitable" as defined above.
+#
+# The reason for this restriction is that the software being compiled
+# may be installed in a shared network directory, and we don't want to
+# have to build separate installations for all the minor architectural
+# differences that may be present (sun4c, sun4e, sun4m, sun4d, sun4u,
+# sun4u1, sun4u2, et al, all running the same release of Solaris; or
+# mips1, mips2, mips3, mips64abi all running Irix, and so on...).
+#
+# Of course, people with multiple systems with different OSes and
+# *major* architectures (eg: Solaris/SPARC versus Solaris/x86, or
+# Linux/x86 versus Linux/PPC versus Linux/68k (etc), or SunOS/68k
+# versus SunOS/SPARC, or VAX versus PDP-11, and so on and so on)
+# will not be able to *directly* share binary compiled programs
+# between such different systems (only via runtime emulators which are 
+# best avoided if at all possible). Hint: creative use of "uname -p"
+# and/or "uname -m" when setting $PATH can help in such cases, but
+# watch out for the BSD 4.x/OpenBSD/FreeBSD/NetBSD "uname -p" that
+# insists on delivering "specific" information rather than general
+# processor-type or baseline instruction-set name.
+#
+# By targeting only general architectures, we can at least
+# ensure that the software has to be configured, built, installed
+# and reinstalled as few times as strictly necessary.
+#
+# For those users that have to get the last 0.0001% out of their new CPUs
+# (hey, what about the *old* CPUs that really need it?), they can edit
+# the final makefile or preset CONF_C99_NAME via "-c99=..." to do so.
+#
+# The *default* behaviour is to go for "general architecture".
+#
+# Yes, I am a Network Administrator... :-P
+#
+#######################################################################
+# NOTE: this module uses a slightly different control-structure to most
+# of the others, as it has to cater for *partially-specified* preset
+# values:
+# $CONF_C99_NAME is used as the preset *name* of the C compiler to try.
+#
+# NOTE: if $CC_NOSTRIP is set, the compiler command should be
+# set to *not* strip the symbol-table of constructed executable files.
+#
+# NOTE: if $CC_AGGRESSIVE is set, try to enable optimisations that usually
+# increase the size of generated code (loop unrolling, automatic inlining);
+# by default they are not enabled, to avoid potentially very unwelcome
+# increase in object-code size. NOTE THAT THIS MUST *NOT* BE USED
+# WHEN COMPILING LIBRARIES THAT CONTAIN PROGRAMMABLY-OVERRIDABLE
+# FUNCTION-IMPLEMENTATIONS IN THEIR EXTERNAL API (such as client-specified
+# global error-handlers) - because internal uses of any inlined functions
+# would not be overridable...
+#######################################################################
+
+# process additional 'Configure' command-line flags:
+#
+for flag in "$@" ; do
+	case "$flag" in
+	-c99=*|--c99=*)
+		CONF_C99_NAME="`echo $flag | sed -e 's/^[^=]*=//'`"
+		test -z "$CONF_C99_NAME" && exec "$my_full_pathname" -help
+		setvar.___ CONF_C99_NAME "$CONF_C99_NAME"
+		;;
+	esac
+done
+
+# Main program:
+#
+if test -z "$status" ; then
+	cc=''
+	if test -n "$CONF_C99_NAME" ; then
+		cc="$CONF_C99_NAME"
+		echo '' 1>&2
+		echo "user-specified base C99 compiler command: $cc" 1>&2
+	fi
+
+	# probe for compiler and flags needed to get ISO C99 semantics:
+	#
+	CONF_C99=""	# stub: the number of fully conformant C99 compilers
+			# is almost none...
+
+	if test -n "$CONF_C99" ; then
+		status=0
+	else
+		test -n "$cc" &&
+			echo "error: user-specified ISO C99 compiler" \
+				"not found/recognised" 1>&2
+		status=2
+	fi
+
+fi
+
+if test "$status" -ne 0 ; then
+	CONF_C99="not found"
+fi
+if test -z "$CONF_QUICK_C99" ; then
+	if test -n "$CONF_C99" ; then
+		CONF_QUICK_C99="$CONF_C99"
+	fi
+fi
+
+aggressive=''
+if test -n "$CC_AGGRESSIVE" && test "$status" -eq 0 ; then
+	aggressive='notice: aggressive C compiler optimisations are enabled'
+fi
+echo "ISO/IEC 9899:1999 C (C99) compiler: $CONF_C99" 1>&2
+test -n "$aggressive" && echo "$aggressive" 1>&2
+
+
+# emit makefile-segment to stdout:
+#
+echo ''
+echo '# command-line to compile strict C (ISO/IEC 9899:1999, aka C99)'
+echo '# source files:'
+test -n "$aggressive" && echo "# [$aggressive]"
+echo '#'
+echo "C99=$CONF_C99"
+echo ''
+
+# and set 'Configure' variables:
+#
+setvar.___ CONF_C99 "$CONF_C99" || status=4
+# following one is internal: for use by only by Configure modules
+setvar.___ CONF_QUICK_C99 "$CONF_QUICK_C99" || status=4
+if test -n "$CONF_C99_NAME" ; then
+	setvar.___ CONF_C99_NAME "$CONF_C99_NAME" || status=4
+fi
+setvar.___ CONF_C99_PROBED "$status" || status=4
+
+exit "$status"

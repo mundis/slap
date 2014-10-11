@@ -1,0 +1,119 @@
+#!/bin/sh
+# @(#)largefiles	1.0	16may2009 MJS
+#------------------------------------------------------------------------------
+# 1.0   16may2009 MJS   original version.
+#------------------------------------------------------------------------------
+capi_name=LARGEFILES
+capi_desc="large files ABI"
+capi_enablers='-DLARGEFILES'	 	# static API-/Configure-defined enablers
+capi_indicators='LARGEFILES'		# API-/Configure-defined indicators
+capi_clevels="89 89X 99"
+
+# compute API-dependency flags:
+case "$@" in
+''|*-help*)
+	;;
+*)
+	chain.___ /tmp/$$.cv lfs_api "$@" && . /tmp/$$.cv
+	rm -f /tmp/$$.cv
+	;;
+esac
+
+
+# determine a suitable pre-def to enable largefile access:
+# the most portable way to do this is to use getconf if available...
+lfbits='128 64 32'      # unless proven otherwise
+if getconf LFS_CFLAGS >/dev/null 2>&1; then
+	words="`getconf LFS_CFLAGS 2>/dev/null`"
+	for word in $words ; do
+		case "$word" in
+		*_FILE_OFFSET_BITS=[0-9]*)
+			lfbits=`echo "$word" |sed -e 's/.*_FILE_OFFSET_BITS=//'`
+			;;
+		esac
+	done
+fi
+
+words="$cflags"
+cflags=''
+for word in $words ; do
+	case "$word" in
+	*_FILE_OFFSET_BITS=[0-9]*)
+		lfbits=''	# no need to probe for valid lfbits
+		s=' '
+		test -z "$cflags" && s=''
+		cflags="${cflags}${s}$word"
+		;;
+	esac
+done
+# if no specific enablers in $cflags, presume the Summit-specified minimum:
+if test -z "$cflags" ; then
+	cflags='-D_FILE_OFFSET_BITS=64'
+fi
+
+capi_try_cflags="$cflags:-Xa $cflags"	# -Xa to workround Solaris header-bugs
+					# at the cost of namespace pollution :(
+capi_try_ldflags="$ldflags"
+capi_try_libs="$libs"
+
+
+#desc: Determine the C-compiler flags needed to enable "largefile" access,
+#desc: if possible, ie: to enables the largefiles **ABI**.
+#desc:
+#desc: 'Configure' variables: CONF_LARGEFILES
+#desc:
+#desc: The equivalent makefile variables (if any) have the same names without
+#desc: the leading 'CONF_'.
+#desc:
+#desc: If the platform/current-ABI actually distinguishes smallfiles from
+#desc: largefiles, the C symbol LARGEFILES will be defined.
+
+#out: relevant "makefile" variable-definitions.
+
+
+eval status='$CONF_'"${capi_name}"'_PROBED'
+test -n "$status" && exit "$status"
+
+. mod.start
+
+
+# build a small ANSI C source file that tests the size of off_t versus
+# unsigned long, and whether off_t is arithmetic ie: whether the types
+# used/returned by fseek() and fseeko() are really the same...
+cat > /tmp/$$.c <<'EOT'
+#include <unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
+int main(unsigned int, char **);
+
+volatile off_t pos=0;
+
+int main(unsigned int ac, char **av)
+	{
+	unsigned int ui=1L;
+	unsigned long ul=1L;
+
+	/* must retrieve return value from ftello() to probe
+	 * for Solaris header-bugs in strict ANSI C mode...
+	 */
+	pos = ftello(stdout);
+        fseeko(stdout, pos, SEEK_SET);
+
+	if (sizeof(pos) <= sizeof(ui))
+		return (EXIT_FAILURE);
+	if (sizeof(pos) > sizeof(ul))
+		return (EXIT_SUCCESS);
+	else /* sizeof(ui) < sizeof(pos) <= sizeof(ul) */
+		{
+		/* ugh, cannot be sure (according to LFS). However, all known
+		 * implementations of LFS only get here if largefiles
+		 * are properly large...
+		 */
+		return (EXIT_SUCCESS);
+		}
+	}
+EOT
+
+. mod.capisearch
+
+exit "$status"

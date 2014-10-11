@@ -1,0 +1,87 @@
+'\" t
+.\" MJS Portable C Library
+.\" Module: quick-reference manual-page for error()
+.\"
+.\" Copyright (c) 1991-1994 Mike Spooner
+.\"----------------------------------------------------------------------
+.\" This program is free software; you can redistribute it and/or modify
+.\" it under the terms of the GNU General Public License as published by
+.\" the Free Software Foundation; either version 2 of the License, or
+.\" (at your option) any later version.
+.\"
+.\" This program is distributed in the hope that it will be useful,
+.\" but WITHOUT ANY WARRANTY; without even the implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+.\" GNU General Public License for more details.
+.\"
+.\" You should have received a copy of the GNU General Public License
+.\" along with this program; if not, write to the Free Software
+.\" Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+.\"----------------------------------------------------------------------
+.TD
+.TH error @LF 14nov94 "MJSulib"
+.SH NAME
+error, verror \- print formatted error message and exit
+.SH SYNOPSIS
+#include "mjsu.h"
+
+VOID error(CHAR *fmt, \|.\|.\|.\|);
+
+#include <stdarg.h>
+
+VOID verror(CHAR *fmt, va_list ap);
+.SH DESCRIPTION
+\fBerror()\fP and \fBverror()\fP
+print an error message to the
+standard-error
+channel and then terminate the calling process by
+making the call:
+.nf
+
+	exit(EXIT_FAILURE);
+
+.fi 
+The emitted message has the following
+structure:
+.nf
+
+	\fIprocess-name\fP: error: \fImessage\fP
+
+.fi
+The
+.I process-name
+is that
+recorded by an earlier call to
+\fBgetflags(@LF)\fP,
+if any, or the string "?".
+.LP
+The
+.I message
+is constructed
+from the format-specification
+.ul
+fmt
+using subsequent arguments,
+in the same way as the standard
+\fBfprintf(@LF)\fP and \fBvfprintf(@LF)\fP
+functions, respectively. 
+.SH RETURNS
+\fBerror()\fP and \fBverror()\fP
+do not return.
+.SH EXAMPLE
+.nf
+
+	errcode = process();
+	if (errcode)
+		error("failed with error-code %d\\n", errcode);
+
+.fi
+.SH SEE ALSO
+\fBgetflags(@LF)\fP, \fBusage(@LF)\fP, \fBremark(@LF)\fP, \fBwarning(@LF)\fP,
+\fBmjsu(@MI)\fP.
+.LP
+\fBexit()\fP, \fBfprintf()\fP, \fBvfprintf()\fP,
+as defined by ANSI X3.159-1989.
+.SH AVAILABILITY
+These functions are written in C,
+conforming to ANSI X3.159-1989 (hosted program environment).

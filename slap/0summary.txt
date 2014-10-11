@@ -1,0 +1,17 @@
+Begin3
+Title:		slap
+Version:	2.4.4
+Entered-date:   09feb01
+Description:	slap prints text labels on any model of Seiko Instruments
+		SmartLabel printer, either standalone or via the UNIX spooler.
+Keywords:	printing, labels, Seiko Smart Label Printer
+Author: 	spooferman@excite.com (Mike Spooner)
+Maintained-by:	spooferman@excite.com (Mike Spooner)
+Primary-site:	http://members.tripod.com/uutil/outbox/
+		1699 Kb slap2r4p4.tgz
+		193 Kb mjsulib3r0p1.tar
+Alternate-site: http://members.tripod.com/uutil/outbox/
+Original-site:	http://members.tripod.com/uutil/slap/download.htm
+Platforms:	any UNIX
+Copying-policy:	GPL
+End

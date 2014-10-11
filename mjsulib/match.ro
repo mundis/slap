@@ -1,0 +1,51 @@
+'\" t
+.\" MJS Portable C Library
+.\" Module: quick-reference manual-page for match()
+.\"
+.\" Copyright (c) 1991-1993 Mike Spooner
+.\"----------------------------------------------------------------------
+.\" This program is free software; you can redistribute it and/or modify
+.\" it under the terms of the GNU General Public License as published by
+.\" the Free Software Foundation; either version 2 of the License, or
+.\" (at your option) any later version.
+.\"
+.\" This program is distributed in the hope that it will be useful,
+.\" but WITHOUT ANY WARRANTY; without even the implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+.\" GNU General Public License for more details.
+.\"
+.\" You should have received a copy of the GNU General Public License
+.\" along with this program; if not, write to the Free Software
+.\" Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+.\"----------------------------------------------------------------------
+.TD
+.TH match @LF "24jun93" "MJSulib"
+.SH NAME
+match \- match a regular expression
+.SH SYNOPSIS
+#include "mjsu.h"
+
+BOOL match(CHAR *buf, UINT n, USHORT *pat);
+.SH DESCRIPTION
+\fBmatch\fP tests the \fIn\fP character buffer starting 
+at \fIbuf\fP for a match with
+the encoded pattern starting at \fIpat\fP.
+.LP
+It is assumed that the pattern was built by the function \fBpattern()\fP,
+whose manual page describes the notation for regular expressions
+accepted by these routines.
+.SH RETURNS
+\fBmatch\fP returns YES if the pattern matches, otherwise NO is returned.
+.SH EXAMPLE
+To test a text line for the presence of three colons:
+.nf
+
+	if (match(line, n, pattern(pbuf, '\\0', ":*:*:")))
+		return (YES);
+
+.fi
+.SH SEE ALSO
+\fBamatch(@LF)\fP, \fBpattern(@LF)\fP,
+\fBmjsu(@MI)\fP.
+.SH AVAILABILITY
+\fBmatch()\fP is written in C, conforming to ANSI X3.159-1989.

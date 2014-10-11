@@ -1,0 +1,56 @@
+foreach clevel
+	assemble cc
+
+	foreach api-config program
+		compute trailing "libgroup" args
+		assemble cflags, ldflags, libs
+		capitry "$cc" "$cflags" "$ldflags" "$libs"
+		if cvars set; then
+			break 2
+		fi
+	done
+
+	foreach pkgconfig
+		assemble cflags, ldflags, libs
+		capitry "$cc" "$cflags" "$ldflags" "$libs"
+		if cvars set; then
+			break 2
+		fi
+	done
+
+	chain statically-configured pre-requisite APIs
+	foreach try_cflags
+		assemble cflags including pre-requisites
+		foreach try_ldflags
+			assemble ldflags including pre-requisites
+			foreach try_libs
+				assemble libs including pre-requisites
+				capitry "$cc" "$cflags" "$ldflags" "$libs"
+			if cvars set; then
+					break 4
+			fi
+			done
+		done
+	done
+done
+
+if cvars set ; then
+	emit makefile segment
+else
+	emit borken makefile segment
+	set cvars negative
+fi
+cache cvars
+
+
+
+xxx-config variants:
+	type1: cflags,ldflags,libs		idealised perfect
+	type2: cflags,libs			gtk-config
+	type3: cflags,cppflags,ldflags,libs	Magic-config
+	type4: cppflags,ldflags,libs		Magick++-config
+	type5: cflags,libs,defines,idlflags	mozilla-config (1.7.x)
+			defines irrelevant, idlflags shdb handled via prereqs
+			so type 5 is really type 2
+
+	Note: some do and some dont accept multiple options per invocation.

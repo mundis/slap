@@ -1,0 +1,61 @@
+NOTICE:
+=======
+
+
+These program need to be able to run on a wide variety of UNIX, UNIX-derived
+and UNIX-like systems, including some as old as UNIX v7 (c.1980).
+
+Thus they are written in to use ONLY the most minimal, generic, available and
+portable set of UNIX facilities.
+
+Some facilities that should be avoided, in order to meet the above portability
+objectives, include:
+
+	basename
+	cut
+	paste
+	join
+	awk
+	nawk (and gawk, mawk, etc)
+	m4
+	shell-functions
+	nested shell command-substitutions
+	getopts
+	getopt
+	extended regular-expressions (in any context)
+	dirname
+	dirs
+	pushd
+	popd
+	true
+	false
+	install
+	pax
+	cpio
+	echo with flags or metacharacters
+	cat with flags
+	the [ command with flags other than -r -w -x -f and -d
+	diff3
+	dircmp
+	symbolic file-access permissions
+	file-access permissions outside the range 0-0777
+	non-Bourne-compatible shells or syntax
+	xargs
+	perl
+	printf
+	print
+	select
+	mkdir with flags
+	cp with flags
+	ln with flags
+	rmdir with flags
+	rm with flags other than -r and -f
+	rdist
+	rcp
+	rsh
+	split
+	csplit
+	tsort
+	typeset
+	file
+

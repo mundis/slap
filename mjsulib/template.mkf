@@ -1,0 +1,363 @@
+######################################################
+# template UNIX makefile for the MJS Utility library
+######################################################
+
+CFLAGS=-I.
+
+MANPAGES_@LF=usage.@LF \
+	error.@LF verror.@LF warning.@LF vwarning.@LF remark.@LF vremark.@LF \
+	mem_buy.@LF str_dup.@LF mem_free.@LF \
+	getflags.@LF pattern.@LF amatch.@LF match.@LF cpystr.@LF whatami.@LF \
+	vec_buy.@LF vec_dup.@LF vec_free.@LF \
+	mbm_bits.@LF mbm_clr.@LF mbm_clrb.@LF mbm_rev.@LF mbm_revb.@LF \
+	mbm_set.@LF mbm_setb.@LF mbm_tstb.@LF \
+	mbm_mem.@LF mbm_buy.@LF mbm_free.@LF \
+	mbm_size.@LF mbm_height.@LF mbm_width.@LF \
+	mbm_load.@LF mbm_save.@LF \
+	lstos.@LF stols.@LF lstol.@LF ltols.@LF \
+	rtw_hash.@LF rtw_short_hash.@LF rtw_long_hash.@LF strhash.@LF \
+	strtos.@LF
+
+MANPAGES_@FF=mbm.@FF
+
+MANPAGES_@MI=mjsu.@MI
+
+OBJECTS=verstr.o \
+	verrmsg.o panic.o error.o usage.o warning.o remark.o \
+	prcname.o whatami.o getflags.o strtos.o \
+	mem_buy.o mem_free.o str_dup.o cpystr.o \
+	vecbuy.o vecdup.o vecfree.o \
+	mbmload.o mbmsave.o mbmneed.o mbmbuy.o mbmfree.o \
+	mbmwidth.o mbmhight.o \
+	mbmset.o mbmclr.o mbmrev.o \
+	mbmsetb.o mbmclrb.o mbmrevb.o mbmtstb.o \
+	regexp.o \
+	lstol.o lstos.o ltols.o stols.o \
+	hash_sht.o hash_lng.o hash_str.o hashmap.o
+
+LIBDIR=$(INSTALL_DIR)/lib
+INCDIR=$(INSTALL_DIR)/include
+MANDIR=$(INSTALL_DIR)/man
+LICDIR=$(INSTALL_DIR)/licences
+LICENCE=$(PKG_NAME)-$(PKG_RELEASE).txt
+
+# derived value
+MAN=$(MANPAGES_@LF) $(MANPAGES_@FF) $(MANPAGES_@MI)
+
+default:	libmjsu.$(SLL) $(MANPAGES_@LF) $(MANPAGES_@FF) $(MANPAGES_@MI)
+
+clean:
+	#rm -f verstr.c
+	rm -f *.o
+	rm -f libmjsu.$(SLL)
+	rm -f $(MANPAGES_@LF)
+	rm -f $(MANPAGES_@FF)
+	rm -f $(MANPAGES_@MI)
+	rm -f *.pdf
+
+distclean:	clean
+	rm -f makefile .makefile.*
+
+install:	libmjsu.$(SLL) $(MANPAGES_@LF) $(MANPAGES_@FF) $(MANPAGES_@MI)
+	tools/mktree				$(LIBDIR)
+	tools/finst -m 444 libmjsu.$(SLL)	$(LIBDIR)/libmjsu.$(SLL)
+	tools/mktree				$(INCDIR)
+	tools/finst -m 444 mjsu.h		$(INCDIR)/mjsu.h
+	tools/mktree				$(MANDIR)/man@LF
+	tools/finst -m 444 $(MANPAGES_@LF)	$(MANDIR)/man@LF
+	tools/mktree				$(MANDIR)/man@FF
+	tools/finst -m 444 $(MANPAGES_@FF)	$(MANDIR)/man@FF
+	tools/mktree				$(MANDIR)/man@MI
+	tools/finst -m 444 $(MANPAGES_@MI)	$(MANDIR)/man@MI
+	-$(MAKEWHATIS)				$(MANDIR)
+	tools/mktree				$(LICDIR)
+	tools/finst -m 444 COPYING		$(LICDIR)/$(LICENCE)
+
+mjsu.h:	mjsuimpl.h
+	touch mjsu.h
+
+libmjsu.$(SLL):	$(OBJECTS)
+	$(AR) $@ $(OBJECTS)
+	$(RANLIB) $@
+
+verstr.c:	makever
+	./makever > verstr.c || rm -f verstr.c
+
+verstr.o:	verstr.c mjsu.h
+	$(C89) $(CFLAGS) -c verstr.c
+
+prcname.o:	prcname.c mjsu.h
+	$(C89) $(CFLAGS) -c prcname.c
+
+panic.o:	panic.c mjsu.h
+	$(C89) $(CFLAGS) -c panic.c
+
+error.o:	error.c mjsu.h
+	$(C89) $(CFLAGS) -c error.c
+
+usage.o:	usage.c mjsu.h
+	$(C89) $(CFLAGS) -c usage.c
+
+warning.o:	warning.c mjsu.h
+	$(C89) $(CFLAGS) -c warning.c
+
+remark.o:	remark.c mjsu.h
+	$(C89) $(CFLAGS) -c remark.c
+
+whatami.o:	whatami.c mjsu.h
+	$(C89) $(CFLAGS) -c whatami.c
+
+verrmsg.o:	verrmsg.c mjsu.h
+	$(C89) $(CFLAGS) -c verrmsg.c
+
+getflags.o:	getflags.c mjsu.h
+	$(C89) $(CFLAGS) -c getflags.c
+
+strtos.o:	strtos.c mjsu.h
+	$(C89) $(CFLAGS) -c strtos.c
+
+mem_buy.o:	mem_buy.c mjsu.h
+	$(C89) $(CFLAGS) -c mem_buy.c
+
+mem_free.o:	mem_free.c mjsu.h
+	$(C89) $(CFLAGS) -c mem_free.c
+
+str_dup.o:	str_dup.c mjsu.h
+	$(C89) $(CFLAGS) -c str_dup.c
+
+regexp.o:	regexp.c mjsu.h
+	$(C89) $(CFLAGS) -c regexp.c
+
+cpystr.o:	cpystr.c mjsu.h
+	$(C89) $(CFLAGS) -c cpystr.c
+
+vecbuy.o:	vecbuy.c mjsu.h
+	$(C89) $(CFLAGS) -c vecbuy.c
+
+vecdup.o:	vecdup.c mjsu.h
+	$(C89) $(CFLAGS) -c vecdup.c
+
+vecfree.o:	vecfree.c mjsu.h
+	$(C89) $(CFLAGS) -c vecfree.c
+
+mbmneed.o:	mbmneed.c mjsu.h
+	$(C89) $(CFLAGS) -c mbmneed.c
+
+mbmload.o:	mbmload.c mjsu.h
+	$(C89) $(CFLAGS) -c mbmload.c
+
+mbmsave.o:	mbmsave.c mjsu.h
+	$(C89) $(CFLAGS) -c mbmsave.c
+
+mbmbuy.o:	mbmbuy.c mjsu.h
+	$(C89) $(CFLAGS) -c mbmbuy.c
+
+mbmfree.o:	mbmfree.c mjsu.h
+	$(C89) $(CFLAGS) -c mbmfree.c
+
+mbmhight.o:	mbmhight.c mjsu.h
+	$(C89) $(CFLAGS) -c mbmhight.c
+
+mbmwidth.o:	mbmwidth.c mjsu.h
+	$(C89) $(CFLAGS) -c mbmwidth.c
+
+mbmset.o:	mbmset.c mjsu.h
+	$(C89) $(CFLAGS) -c mbmset.c
+
+mbmclr.o:	mbmclr.c mjsu.h
+	$(C89) $(CFLAGS) -c mbmclr.c
+
+mbmrev.o:	mbmrev.c mjsu.h
+	$(C89) $(CFLAGS) -c mbmrev.c
+
+mbmsetb.o:	mbmsetb.c mjsu.h
+	$(C89) $(CFLAGS) -c mbmsetb.c
+
+mbmclrb.o:	mbmclrb.c mjsu.h
+	$(C89) $(CFLAGS) -c mbmclrb.c
+
+mbmrevb.o:	mbmrevb.c mjsu.h
+	$(C89) $(CFLAGS) -c mbmrevb.c
+
+mbmtstb.o:	mbmtstb.c mjsu.h
+	$(C89) $(CFLAGS) -c mbmtstb.c
+
+lstol.o:	lstol.c mjsu.h
+	$(C89) $(CFLAGS) -c lstol.c
+
+lstos.o:	lstos.c mjsu.h
+	$(C89) $(CFLAGS) -c lstos.c
+
+ltols.o:	ltols.c mjsu.h
+	$(C89) $(CFLAGS) -c ltols.c
+
+stols.o:	stols.c mjsu.h
+	$(C89) $(CFLAGS) -c stols.c
+
+#--------------------------------------------
+
+hash_sht.o: hash_sht.c mjsu.h
+	$(C89) $(CFLAGS) -c hash_sht.c
+
+hash_lng.o: hash_lng.c mjsu.h
+	$(C89) $(CFLAGS) -c hash_lng.c
+
+hash_str.o: hash_str.c mjsu.h
+	$(C89) $(CFLAGS) -c hash_str.c
+
+hashmap.o: hashmap.c mjsu.h
+	$(C89) $(CFLAGS) -c hashmap.c
+
+#--------------------------------------------
+
+mjsu.@MI:	mjsu.ro
+	tools/prepman -o $@ mjsu.ro
+
+mbm.@FF:	mbm.ro
+	tools/prepman -o $@ mbm.ro
+
+usage.@LF:	usage.ro
+	tools/prepman -o $@ usage.ro
+
+error.@LF:	error.ro
+	tools/prepman -o $@ error.ro
+
+verror.@LF:	error.@LF
+	echo ".so man@LF/error.@LF" > verror.@LF
+
+warning.@LF:	warning.ro
+	tools/prepman -o $@ warning.ro
+
+vwarning.@LF:	warning.@LF
+	echo ".so man@LF/warning.@LF" > vwarning.@LF
+
+remark.@LF:	remark.ro
+	tools/prepman -o $@ remark.ro
+
+vremark.@LF:	remark.@LF
+	echo ".so man@LF/remark.@LF" > vremark.@LF
+
+mem_buy.@LF:	mem_buy.ro
+	tools/prepman -o $@ mem_buy.ro
+
+str_dup.@LF:	str_dup.ro
+	tools/prepman -o $@ str_dup.ro
+
+mem_free.@LF:	mem_free.ro
+	tools/prepman -o $@ mem_free.ro
+
+getflags.@LF:	getflags.ro
+	tools/prepman -o $@ getflags.ro
+
+pattern.@LF:	pattern.ro
+	tools/prepman -o $@ pattern.ro
+
+amatch.@LF:	amatch.ro
+	tools/prepman -o $@ amatch.ro
+
+match.@LF:	match.ro
+	tools/prepman -o $@ match.ro
+
+cpystr.@LF:	cpystr.ro
+	tools/prepman -o $@ cpystr.ro
+
+whatami.@LF:	whatami.ro
+	tools/prepman -o $@ whatami.ro
+
+vec_buy.@LF:	vec_buy.ro
+	tools/prepman -o $@ vec_buy.ro
+
+vec_dup.@LF:	vec_dup.ro
+	tools/prepman -o $@ vec_dup.ro
+
+vec_free.@LF:	vec_free.ro
+	tools/prepman -o $@ vec_free.ro
+
+#-----
+mbm_bits.@LF:	mbm_bits.ro
+	tools/prepman -o $@ mbm_bits.ro
+
+mbm_clr.@LF:	mbm_bits.@LF
+	echo ".so man@LF/mbm_bits.@LF" > mbm_clr.@LF
+
+mbm_clrb.@LF:	mbm_bits.@LF
+	echo ".so man@LF/mbm_bits.@LF" > mbm_clrb.@LF
+
+mbm_rev.@LF:	mbm_bits.@LF
+	echo ".so man@LF/mbm_bits.@LF" > mbm_rev.@LF
+
+mbm_revb.@LF:	mbm_bits.@LF
+	echo ".so man@LF/mbm_bits.@LF" > mbm_revb.@LF
+
+mbm_set.@LF:	mbm_bits.@LF
+	echo ".so man@LF/mbm_bits.@LF" > mbm_set.@LF
+
+mbm_setb.@LF:	mbm_bits.@LF
+	echo ".so man@LF/mbm_bits.@LF" > mbm_setb.@LF
+
+mbm_tstb.@LF:	mbm_bits.@LF
+	echo ".so man@LF/mbm_bits.@LF" > mbm_tstb.@LF
+
+#----
+mbm_load.@LF:	mbm_load.ro
+	tools/prepman -o $@ mbm_load.ro
+
+mbm_save.@LF:	mbm_save.ro
+	tools/prepman -o $@ mbm_save.ro
+
+#---
+mbm_mem.@LF:	mbm_mem.ro
+	tools/prepman -o $@ mbm_mem.ro
+
+mbm_buy.@LF:	mbm_mem.@LF
+	echo ".so man@LF/mbm_mem.@LF" > mbm_buy.@LF
+
+mbm_free.@LF:	mbm_mem.@LF
+	echo ".so man@LF/mbm_mem.@LF" > mbm_free.@LF
+
+#---
+mbm_size.@LF:	mbm_size.ro
+	tools/prepman -o $@ mbm_size.ro
+
+mbm_height.@LF:	mbm_size.@LF
+	echo ".so man@LF/mbm_size.@LF" > mbm_height.@LF
+
+mbm_width.@LF:	mbm_size.@LF
+	echo ".so man@LF/mbm_size.@LF" > mbm_width.@LF
+
+#---
+lstos.@LF:	lstos.ro
+	tools/prepman -o $@ lstos.ro
+
+stols.@LF:	stols.ro
+	tools/prepman -o $@ stols.ro
+
+lstol.@LF:	lstol.ro
+	tools/prepman -o $@ lstol.ro
+
+ltols.@LF:	ltols.ro
+	tools/prepman -o $@ ltols.ro
+
+rtw_hash.@LF:	rtw_hash.ro
+	tools/prepman -o $@ rtw_hash.ro
+
+rtw_long_hash.@LF:	rtw_hash.@LF
+	echo ".so man@LF/rtw_hash.@LF" > $@
+
+rtw_short_hash.@LF:	rtw_hash.@LF
+	echo ".so man@LF/rtw_hash.@LF" > $@
+
+strhash.@LF:	rtw_hash.@LF
+	echo ".so man@LF/rtw_hash.@LF" > $@
+
+strtos.@LF:	strtos.ro
+	tools/prepman -o $@ strtos.ro
+
+pdf:    $(MAN)
+	-for file in $(MAN) ; do \
+		grep '^\.so' "$$file" >/dev/null && continue ; \
+		base=`expr "$$file" : '\(.*\)\.[0-9].*'` ; \
+		echo "$$base".pdf: ; \
+		tools/man2post <"$$file" | tools/post2pdf >"$$base".pdf ; \
+	done
+

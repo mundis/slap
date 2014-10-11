@@ -1,0 +1,62 @@
+'\" t
+.\" MJS Portable C Library
+.\" Module: quick-reference manual-page for MBM allocation routines
+.\"
+.\" Copyright (c) 1997 Mike Spooner
+.\"----------------------------------------------------------------------
+.\" This program is free software; you can redistribute it and/or modify
+.\" it under the terms of the GNU General Public License as published by
+.\" the Free Software Foundation; either version 2 of the License, or
+.\" (at your option) any later version.
+.\"
+.\" This program is distributed in the hope that it will be useful,
+.\" but WITHOUT ANY WARRANTY; without even the implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+.\" GNU General Public License for more details.
+.\"
+.\" You should have received a copy of the GNU General Public License
+.\" along with this program; if not, write to the Free Software
+.\" Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+.\"----------------------------------------------------------------------
+.TD
+.TH mbm_mem @LF 23jun97 "MJSulib"
+.SH NAME
+mbm_mem, mbm_buy, mbm_free \- allocate or deallocate bitmaps on the heap
+.SH SYNOPSIS
+#include "mjsu.h"
+
+MBITMAP *mbm_buy(USHORT height, USHORT width, BOOL force);
+
+MBITMAP *mbm_free(MBITMAP *bm);
+.SH DESCRIPTION
+\fBmbm_buy()\fP attempts to allocate a cell of heap memory
+large enough
+to store an MBITMAP structure representing a bitmap with \fIheight\fP rows
+and \fIwidth\fP columns.
+.LP
+If the allocation request cannot be satisfied and \fIforce\fP is YES,
+the calling process is terminated by the following call:
+.nf
+
+	error("out of memory");
+
+.fi
+.LP
+\fBmbm_free()\fP destroys a bitmap previously created by \fBmbm_buy()\fP,
+and deallocates the heap storage it occupied.
+.SH RETURNS
+If successful, \fBmbm_buy()\fP returns
+a pointer to the new bitmap; otherwise NULL is returned.
+.LP
+\fBmbm_free()\fP always returns NULL, a useful sentinel value.
+.SH SEE ALSO
+\fBmbm(@FF)\fP,
+\fBmbm_bits(@LF)\fP, \fBerror(@LF)\fP,
+\fBmjsu(@MI)\fP.
+
+\fBmalloc()\fP, \fBrealloc()\fP and \fBfree()\fP,
+as defined by ANSI X3.159-1989.
+.SH AVAILABILITY
+These functions
+are written in C,
+conforming to ANSI X3.159-1989 (hosted program environment).

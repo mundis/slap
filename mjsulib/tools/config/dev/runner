@@ -1,0 +1,18 @@
+#!/bin/sh
+
+if . ./inclfalse ; then
+	echo FAIL
+	exit 1
+else
+	echo 1
+fi
+
+if . ./incltrue ; then
+	echo 2
+else
+	echo FAIL
+	exit 2
+fi
+
+echo OK
+exit 0

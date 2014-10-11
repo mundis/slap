@@ -1,0 +1,37 @@
+#!/bin/sh
+# Record a 'Configure' variable in the "$CONF_CACHE" file.
+# Arg1 is name of variable.
+# Remaining args, if any, are the value, else the value is set to be empty.
+# Attempts to set the value of "reserved" variables, such as the package-name,
+# the pathname of the cache file, and so on, are silently ignored.
+
+case "$1" in
+CONF_CACHE|CONF_PKG_DESC|CONF_PKG_NAME|CONF_PKG_FULLNAME|CONF_PKG_RELEASE)
+	exit 0
+	;;
+'')
+	echo '***' 1>&2
+	echo '*** ERROR: asked to set *unnamed* variable' 1>&2
+	echo '***' 1>&2
+	exit 1
+	;;
+esac
+
+# if CONF_CACHE is not defined yet, ignore request.
+if test -z "$CONF_CACHE" ; then
+	exit 0
+fi
+
+
+if test ! -f "$CONF_CACHE" || test ! -w "$CONF_CACHE" ; then
+	echo '***' 1>&2
+	echo "*** ERROR: cannot append settings to $CONF_CACHE ***" 1>&2
+	echo '***' 1>&2
+	exit 1
+else
+	var="$1"
+	shift
+	echo "${var}"'="'"$@"'"' >>"$CONF_CACHE"
+	echo "export $var" >>"$CONF_CACHE"
+fi
+exit 0

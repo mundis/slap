@@ -1,0 +1,57 @@
+#!/bin/sh
+
+if [ -f ./dist.info ] ; then
+	. ./dist.info
+else
+	echo "$0 error: cannot find ./dist.info"
+	exit 1
+fi
+if [ -f makefile ] ; then
+	make distclean || exit 1
+	echo "\n"
+fi
+
+echo "Creating source distributions of $pkgname ${major}.${minor}.${micro}..."
+
+trap "rm -rf /tmp/${pkgname}" 0 1 2 3 6 13 15
+mkdir /tmp/${pkgname} || exit 1
+tar -cf - . | ( cd /tmp/${pkgname} && tar -xf - )
+
+root="${pkgname}${major}"
+[ -n "$minor" ] && root="${root}r$minor"
+[ -n "$micro" ] && root="${root}p$micro"
+tools/mktree $spool || exit 1
+
+for f in $formats ; do
+	trap 'rm -rf $target' 1 2 3 13 15
+	case $f in
+		tar)	target="$spool/${root}.tar"
+			echo "$target"
+			( cd /tmp && tar -cf $target $pkgname ) || exit 1
+			;;
+		tgz)	target="$spool/${root}.tgz"
+			echo "$target"
+			( cd /tmp && tar -cf - $pkgname | gzip -c > $target ) || \
+				exit 1
+			;;
+		taz)	target="$spool/${root}.taz"
+			echo "$target"
+			( cd /tmp && tar -cf - $pkgname | compress -c > $target ) || \
+				exit 1
+			;;
+		zip)	target="$spool/${root}.zip"
+			echo "$target"
+			# NOTE: src-spec on the pkzip command-line
+			# must be quoted for -dir to work properly...
+			cd /tmp || exit 1
+			if pkzip -default -add -dir -silent $target "$pkgname/*" ; then
+				rm -f pkzip.cfg
+			else
+				rm -f pkzip.cfg
+				exit 1
+			fi
+			;;
+		*)	echo "Sorry, \"$f\" format not supported" 1>&2
+			exit 1
+	esac
+done

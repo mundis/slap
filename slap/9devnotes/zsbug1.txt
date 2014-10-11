@@ -1,0 +1,113 @@
+                        Sun Bug Reports article 1264381
+  ------------------------------------------------------------------------
+
+ Bug Id:     1264381
+ Category:  kernel
+ Subcategory:  driver
+ State:  closed
+ Release summary: 2.5
+ Synopsis:  zs driver behaves strangly when setting 115200 baud with stty.
+        Integrated in releases:
+ Patch id:
+ Description:
+If you try and set a  baud rate that the hardware does not support, not only
+does the ioctl() succeed
+which it should not, but the results are unexpected:
+
+EG:
+
+cat </dev/ttya &
+This is what you would expect to happen:
+
+mutiny# stty 57600 </dev/ttya
+mutiny# stty -a </dev/ttya
+speed 57600 baud;
+rows = 0; columns = 0; ypixels = 0; xpixels = 0;
+eucw 1:0:0:0, scrw 1:0:0:0
+intr = ^c; quit = ^|; erase = ^?; kill = ^u;
+eof = ^d; eol = <undef>; eol2 = <undef>; swtch =
+<undef>;
+start = ^q; stop = ^s; susp = ^z; dsusp = ^y;
+rprnt = ^r; flush = ^o; werase = ^w; lnext = ^v;
+-parenb -parodd cs8 -cstopb -hupcl cread -clocal -loblk -crtscts -crtsxoff
+-parext
+-ignbrk brkint -ignpar -parmrk -inpck -istrip -inlcr -igncr icrnl -iuclc
+ixon -ixany -ixoff imaxbel
+isig icanon -xcase echo echoe echok -echonl -noflsh
+-tostop echoctl -echoprt echoke -defecho -flusho -pendin iexten
+opost -olcuc onlcr -ocrnl -onocr -onlret -ofill -ofdel tab3
+
+Same for 76800, and all the slower speeds.
+
+Now try 115200:
+
+mutiny# stty 115200 </dev/ttya
+mutiny# stty -a </dev/ttya
+ispeed 57600 baud; ospeed 115200 baud;     <------ The driver actually sets
+speed to 57600
+rows = 0; columns = 0; ypixels = 0; xpixels = 0;
+eucw 1:0:0:0, scrw 1:0:0:0
+intr = ^c; quit = ^|; erase = ^?; kill = ^u;
+eof = ^d; eol = <undef>; eol2 = <undef>; swtch =
+<undef>;
+start = ^q; stop = ^s; susp = ^z; dsusp = ^y;
+rprnt = ^r; flush = ^o; werase = ^w; lnext = ^v;
+-parenb -parodd cs8 -cstopb -hupcl cread -clocal -loblk -crtscts -crtsxoff
+-parext
+-ignbrk brkint -ignpar -parmrk -inpck -istrip -inlcr -igncr icrnl -iuclc
+ixon -ixany -ixoff imaxbel
+isig icanon -xcase echo echoe echok -echonl -noflsh
+-tostop echoctl -echoprt echoke -defecho -flusho -pendin iexten
+opost -olcuc onlcr -ocrnl -onocr -onlret -ofill -ofdel tab3
+
+The following program shows that cfgetispeed() and  cfgetospeed() return to
+same values as stty.
+
+#include <stdio.h>
+#include <errno.h>
+#include <termio.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/ttydev.h>
+#include <sys/fcntl.h>
+#definePORT "/dev/ttya"
+
+main(argc,argv)
+
+int argc;
+char *argv[];
+{
+
+        int debug,fd;
+        struct termios line;
+        char system_string[200];
+
+        debug = 1;
+
+       if((fd = open( PORT , O_RDWR  ,0  )) == -1) {
+                 perror( "Error Opening Serial Device ");
+                 exit(1);
+
+        }
+
+        if(tcgetattr(fd, &line) == -1) {
+                perror("Error getting characteristics");
+        }
+
+        if(debug) {
+                printf("\n\nPort settings are:\n\n");
+                sprintf(system_string, "/usr/bin/stty -a < %s" , PORT);
+                printf("Exit status %d\n" , system(system_string));
+        }
+
+        printf("IBAUD = %d\n" , cfgetispeed( &line));
+        printf("OBAUD = %d\n" , cfgetospeed( &line));
+
+        close(fd);
+        exit(0);
+}
+
+  ------------------------------------------------------------------------
+     Copyright 1994-1998 Sun Microsystems, Inc., 901 San Antonio Road, Palo
+     Alto, CA 94303 USA.
+     All rights reserved.

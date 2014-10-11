@@ -1,0 +1,93 @@
+'\" t
+.\" MJS Portable C Library
+.\" Module: quick-reference manual-page for remark()
+.\"
+.\" Copyright (c) 1991-1994 Mike Spooner
+.\"----------------------------------------------------------------------
+.\" This program is free software; you can redistribute it and/or modify
+.\" it under the terms of the GNU General Public License as published by
+.\" the Free Software Foundation; either version 2 of the License, or
+.\" (at your option) any later version.
+.\"
+.\" This program is distributed in the hope that it will be useful,
+.\" but WITHOUT ANY WARRANTY; without even the implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+.\" GNU General Public License for more details.
+.\"
+.\" You should have received a copy of the GNU General Public License
+.\" along with this program; if not, write to the Free Software
+.\" Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+.\"----------------------------------------------------------------------
+.TD
+.TH remark @LF 14nov94 "MJSulib"
+.SH NAME
+remark, vremark \- print formatted notification message
+.SH SYNOPSIS
+#include "mjsu.h"
+
+UINT remark(CHAR *fmt, \|.\|.\|.\|);
+
+#include <stdarg.h>
+
+VOID vremark(CHAR *fmt, va_list ap);
+.SH DESCRIPTION
+If \fIfmt\fR is not NULL, \fBremark()\fP and \fBvremark()\fP
+print a notification message to the
+standard-error
+channel.
+.LP
+If \fIfmt\fR is NULL, no message is printed.
+.LP
+The emitted message, if any, has the following
+structure:
+.nf
+
+	\fIprocess-name\fP: \fImessage\fP
+
+.fi
+The
+.I process name
+is that
+recorded by an earlier call to
+\fBgetflags(@LF)\fP,
+if any, or the string "?".
+.LP
+The
+.I message
+is constructed
+from the format-specification
+.ul
+fmt
+using subsequent arguments,
+in the same way as the standard
+\fBfprintf(@LF)\fP and \fBvfprintf(@LF)\fP
+functions, respectively. 
+.SH RETURNS
+\fBremark()\fP and \fBvremark()\fP
+return the number of times that either function has been called with a
+non-NULL \fIfmt\fR,
+including the current call, ie: the number of notification messages printed
+so far by the invoking process.
+.SH EXAMPLE
+.nf
+
+	remark("starting first pass\\n");
+
+	lengthy_process_1();
+
+	remark("starting second pass\\n");
+
+	lengthy_process_2();
+
+	remark("processing complete\\n");
+
+.fi
+.SH SEE ALSO
+\fBgetflags(@LF)\fP, \fBusage(@LF)\fP, \fBerror(@LF)\fP, \fBwarning(@LF)\fP,
+\fBmjsu(@MI)\fP.
+.LP
+\fBfprintf()\fP and \fBvfprintf()\fP, 
+as defined by ANSI X3.159-1989.
+.SH AVAILABILITY
+These functions are written in C,
+conforming to ANSI X3.159-1989 (hosted program environment).

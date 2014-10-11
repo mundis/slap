@@ -1,0 +1,63 @@
+----------------------------------------------------------------------------
+                          [MJS Portable C Library]
+
+                       Which platforms are supported?
+
+In principle, MJSulib can be built for any platform which has an ANSI C
+compiler. However, the automatic generation of the "makefile" only works
+under UNIX. Specific makefiles for other platforms (and their various C
+compilers) are a future enhancement.
+
+I have manually built the library on MSDOS, using the Turbo C compiler.
+
+----------------------------------------------------------------------------
+
+Tested Platforms
+
+     Solaris/SPARC 2.1, 2.3, 2.4, 2.5, 2.5.1, 2.6, 8, 9 and 10, with the
+     	SunPro, GNU, and TenDRA C compilers.
+     Solaris/x86 8, with both the SunStudio C compiler and the GNU C compiler.
+
+     Slackware Linux 2 (kernel 1.0.14)
+     Slackware Linux 3.0.0 (kernel 1.2.38)
+     RedHat Linux 4.1 (kernel 2.0.27)
+     SUSE Linux/SPARC 7.3
+
+     NetBSD/SPARC 2.1, 3.0, 4.1
+     FreeBSD/x86
+     OpenBSD/SPARC 3.8
+
+     Cygwin on Windows XP (32-bit x86)
+
+     Irix 5.3
+     AIX 3.5 on POWER
+
+     VMS/VAX 7.3
+     VMS/Alpha 7.3
+
+     MSDOS, using the Turbo C compiler (makefile had to be constructed by hand)
+     Windows 98SE using the OpenWatcom C Compiler
+
+----------------------------------------------------------------------------
+
+Volunteers?
+
+It would be handy if someone can help develop makefiles for non-UNIX
+platforms:
+
+   * MacOS classic
+   * MVS
+   * AmigaOS
+   * ReactOS
+
+It would also help if someone would volunteer to test the above platforms,
+and more UNIX systems, such as:
+
+   * DYNIX/ptx
+   * HP-UX
+   * A/UX
+   * QNX
+   * etc!
+
+Please email spooferman@excite.com if you can help with this.
+----------------------------------------------------------------------------

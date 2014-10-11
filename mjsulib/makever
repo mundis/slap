@@ -1,0 +1,17 @@
+#!/bin/sh
+
+. ./dist.info || exit 1
+
+[ -n "$micro" ] && micro=".$micro"
+v="${pkgname:?}	$major.$minor$micro	${dated:?} ${author:?}"
+id="$pkgname/${major:?}.${minor:?}$micro"
+
+
+cat <<EOT
+/* computed source version-related strings.
+ * THIS FILE IS GENERATED AUTOMATICALLY - DO NOT EDIT
+ */
+#include "mjsu.h"
+#include "mjsuimpl.h"
+const CHAR * const mjsulibver = "@(#)$v";
+EOT

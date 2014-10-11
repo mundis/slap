@@ -1,0 +1,45 @@
+'\" t
+.\" MJS Portable C Library
+.\" Module: quick-reference manual-page for mbm_load()
+.\"
+.\" Copyright (c) 1997 Mike Spooner
+.\"----------------------------------------------------------------------
+.\" This program is free software; you can redistribute it and/or modify
+.\" it under the terms of the GNU General Public License as published by
+.\" the Free Software Foundation; either version 2 of the License, or
+.\" (at your option) any later version.
+.\"
+.\" This program is distributed in the hope that it will be useful,
+.\" but WITHOUT ANY WARRANTY; without even the implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+.\" GNU General Public License for more details.
+.\"
+.\" You should have received a copy of the GNU General Public License
+.\" along with this program; if not, write to the Free Software
+.\" Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+.\"----------------------------------------------------------------------
+.TD
+.TH mbm_load @LF 23jun97 "MJSulib"
+.SH NAME
+mbm_load \- load a bitmap from a file
+.SH SYNOPSIS
+#include "mjsu.h"
+
+MBITMAP *mbm_load(FILE *pf);
+.SH DESCRIPTION
+\fBmbm_load()\fP reads an MBM format
+bitmap from the current offset in the open file
+designated by \fIpf\fP into memory.
+.LP
+The memory used to hold the loaded bitmap is automatically allocated from the
+heap. Such memory can be subsequently released by \fBmbm_free()\fP.
+.SH RETURNS
+If the file contents are not in MBM format (as written by \fBmbm_save()\fP),
+or if sufficient memory cannot be allocated, NULL is returned. Otherwise
+a pointer to the allocated bitmap is returned.
+.SH SEE ALSO
+\fBmbm(@FF)\fP,
+\fBmbm_save(@LF)\fP, \fBmbm_free(@LF)\fP.
+.SH AVAILABILITY
+\fBmbm_load()\fP is written in C, conforming to ANSI X3.159-1989
+(hosted program environment).

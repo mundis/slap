@@ -1,0 +1,382 @@
+/* MJS Portable C Library.
+ * Module: get command-line flags
+ * @(#) getflags.c	1.1.1	17jun2012 MJS
+ *
+ * Copyright (c) 1991,2012 Mike Spooner
+ *----------------------------------------------------------------------
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *----------------------------------------------------------------------
+ * Source-code conforms to ANSI standard X3.159-1989.
+ */
+#if defined(unix) || \
+	defined(__unix__) || \
+	defined(__unix) || \
+	defined(__CYGWIN__) || \
+	defined(_POSIX_SOURCE)
+#include <unistd.h>
+#endif
+#include <stdarg.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <errno.h>
+#include "mjsu.h"
+#include "mjsuimpl.h"
+
+typedef struct
+	{
+	UTINY maxnum;
+	UTINY num;
+	CHAR *val[255];
+	} STRINGSET;
+
+typedef struct
+	{
+	UTINY maxnum;
+	UTINY num;
+	SHORT val[255];
+	} SHORTSET;
+
+typedef struct
+	{
+	UTINY maxnum;
+	UTINY num;
+	LONG val[255];
+	} LONGSET;
+
+
+typedef enum
+	{
+	BOOLEAN,
+	STRING_ONCE,
+	SHORT_ONCE,
+	LONG_ONCE,
+	STRING_SET,
+	SHORT_SET,
+	LONG_SET
+	} FLAG_TYPE;
+
+
+/* private function to initialise process_name.
+ * Called by getflags().
+ */
+static VOID register_prcname(CHAR *argv0)
+	{
+	INT fd;
+	FILE *pf;
+	char *try;
+	static BOOL done = NO;	/* do nothing after first time! */
+
+	if (done)
+		return;
+	done = YES;
+	process_name = argv0;	/* until proven otherwise */
+
+	/* want to strip leading "path" from name if possible...but need
+	 * different scheme for different operating systems:
+	 *
+	 * VMS, P/OS, RSX-11:	look for last ']' else last ':'
+	 * RT-11, RSTS/E:	look for last ']' else last ':'
+	 * VERSAdos:		look for last ']'
+	 * UNIX, POSIX, et al:	look for last '/'
+	 * MSDOS, CP/M, etc:	look for last '\\' else last ':'
+	 */
+
+	#if defined(unix) || \
+		defined(__unix__) || \
+		defined(__unix) || \
+		defined(__CYGWIN__) || \
+		defined(_POSIX_SOURCE)
+	/* UNIX, POSIX: lightweight version */
+	if ((try = strrchr(argv0, '/')) && *++try)
+		process_name = try;
+	#else
+	if ((pf = fopen("/dev/null", "r")))
+		{	
+		/* UNIX, zOS HFS, etc */
+		fclose(pf);
+		if ((try = strrchr(argv0, '/')) && *++try)
+			process_name = try;
+		}
+	else if ((pf = fopen(".\\NUL:", "r")))
+		{
+		/* MSDOS etc */
+		fclose(pf);
+		if (!(try = strrchr(argv0, '\\')) && *++try)
+			process_name = try;
+		else if ((try = strrchr(argv0, ':')) && *++try)
+			process_name = try;
+		}
+	else
+		{
+		/* other: VMS, P/OS, RSX-11, RT-11, RSTS/E, VERSAdos,
+		 */
+		if (!(try = strrchr(argv0, ']')) && *++try)
+			process_name = try;
+		else if ((try = strrchr(argv0, ':')) && *++try)
+			process_name = try;
+		}
+	#endif
+	return;
+	}
+
+/* print a fatal "usage:" message based on the fmt and otherinfo given to
+ * getflags()...
+ */
+static VOID prusage(CHAR *fmt, CHAR *otherinfo)
+	{
+	const CHAR *pfx = "usage: ";
+	CHAR *buf = malloc(strlen(process_name) + 1 + \
+		strlen(pfx) + 1 + (strlen(fmt)*2) + 4 + strlen(otherinfo));
+	CHAR *p;
+
+	if (buf)
+		{
+		CHAR *q;
+		q = p = cpystr(buf, pfx, process_name, " ", NULL);
+		for ( ; fmt && *fmt; ++fmt)
+			{
+			if (p == q)   /* first time AND fmt is NOT empty */
+				{
+				*p++ = '[';
+				*p++ = '-';
+				}
+			switch (*fmt)
+				{
+			case ',':
+				*p++ = ' ';
+				*p++ = '-';
+				break;
+			case '%':
+				*p++ = *fmt;
+				/* fall thru */
+			default:
+				*p++ = *fmt;
+				break;
+				}
+			}
+		if (p != q)   /* fmt was not empty */
+			{
+			*p++ = ']';
+			*p++ = ' ';
+			}
+		}
+	else
+		{
+		if (fmt && *fmt)
+			{
+			buf = "[flags] ";
+			p = buf + strlen(buf);
+			}
+		}
+
+	#if defined(unix) || \
+		defined(__unix__) || \
+		defined(__unix) || \
+		defined(__CYGWIN__) || \
+		defined(_POSIX_SOURCE)
+	write(STDERR_FILENO, buf, strlen(buf));
+	write(STDERR_FILENO, otherinfo, strlen(otherinfo));
+	write(STDERR_FILENO, "\n", 1);
+	#else
+	fputs(buf, stderr);
+	fputs(otherinfo, stderr);
+	fputs("\n", stderr);
+	#endif
+	exit(EXIT_FAILURE);
+	}
+
+
+/* Get command-line flags (from arg vector at *pav), modify *pav and *pac
+ * to reflect the consumed command-line arguments, and set the variables
+ * pointed-to by ... according to the flag-specifications at *fmt.
+ * Returns NULL if all flags were valid, else returns pointer to the
+ * command-line argument which is an illegal flag.
+ */
+CHAR *getflags(INT *pac, CHAR ***pav, CHAR *fmt, CHAR *otherinfo, ...)
+	{
+	va_list ap;
+	CHAR **pstring = NULL;
+	SHORT *pshort = 0, sv;
+	LONG *plong = 0L, lv;
+	BOOL *pbool = NO, v;
+	STRINGSET *pstrings = NULL;
+	SHORTSET *pshorts = NULL;
+	LONGSET *plongs = NULL;
+	BOOL valid;
+	INT n = 0;
+	FLAG_TYPE type;
+	CHAR *lastwhole;
+	CHAR *psrc, *valstr = NULL, *q, *r;
+
+	register_prcname(**pav);
+
+	for (--(*pac), ++(*pav); (*pac > 0) && **pav; --(*pac), ++(*pav))
+		{
+		if (***pav != '-')
+			break;
+		if (!strcmp(**pav, "--")) 
+			{
+			--(*pac);
+			++(*pav);
+			break;
+			}
+		else if (!strcmp(**pav, "-"))
+			break;
+
+		lastwhole = **pav;
+		for (psrc = lastwhole + 1; *psrc; psrc += n)
+			{
+			valid = FALSE;
+			va_start(ap, otherinfo);
+			for (q = fmt; q && *q && !valid; q = strpbrk(q, ","))
+				{
+				if (*q == ',')
+					q++;
+				r = strpbrk(q, "*#,");
+				if (r)
+					n = r - q;
+				else
+					n = strlen(q);
+				if (r && (*r == '#'))
+					{
+					if (*(r+1) && (*(r+1) == '#'))
+						{
+						if (*(r+2) && (*(r+2) == '^'))
+							{
+							type = LONG_SET;
+							plongs = va_arg(ap, LONGSET *);
+							}
+						else
+							{
+							type = LONG_ONCE;
+							plong = va_arg(ap, LONG *);
+							}
+						}
+					else
+						{
+						if (*(r+1) && (*(r+1) == '^'))
+							{
+							type = SHORT_SET;
+							pshorts = va_arg(ap, SHORTSET *);
+							}
+						else
+							{
+							type = SHORT_ONCE;
+							pshort = va_arg(ap, SHORT *);
+							}
+						}
+					}
+				else if (r && (*r == '*'))
+					{
+					if (*(r+1) && (*(r+1) == '^'))
+						{
+						type = STRING_SET;
+						pstrings = va_arg(ap, STRINGSET *);
+						}
+					else
+						{
+						type = STRING_ONCE;
+						pstring = va_arg(ap, CHAR **);
+						}
+					}
+				else
+					{
+					type = BOOLEAN;
+					pbool = va_arg(ap, BOOL *);
+					}
+				if (!strncmp(psrc, q, n))
+					{
+					if (type != BOOLEAN)
+						{
+						if (psrc[n])
+							{
+							valstr = &psrc[n];
+							/* force skip rest of src: */
+							psrc += strlen(valstr);
+							}
+						else if (*((*pav)+1))
+							{
+							valstr = (*(++(*pav)));
+							--(*pac);
+							}
+						else /* missing value! */
+							break;
+						}
+	
+					/* now assign value to target variable:
+					 */
+					switch (type)
+						{
+					case BOOLEAN:
+						valid = TRUE;
+						*pbool = TRUE;
+						break;
+					case STRING_ONCE:
+						valid = TRUE;
+						*pstring = valstr;
+						break;
+					case SHORT_ONCE:
+						errno = 0;
+						sv = strtos(valstr,&r,10);
+						if ((valid = !errno))
+							*pshort = sv;
+						break;
+					case LONG_ONCE:
+						errno = 0;
+						lv = strtol(valstr,&r,10);
+						if ((valid = !errno))
+							*plong = lv;
+						break;
+					case STRING_SET:
+						if (pstrings->num < pstrings->maxnum)
+							{
+							pstrings->val[pstrings->num++] = valstr;
+							valid = TRUE;
+							}
+						break;
+					case SHORT_SET:
+						if (pshorts->num < pshorts->maxnum)
+							{
+							errno = 0;
+							sv = strtos(valstr,&r,10);
+							if ((valid = !errno))
+								pshorts->val[pshorts->num++] = sv;
+							}
+						break;
+					case LONG_SET:
+						if (plongs->num < plongs->maxnum)
+							{
+							errno = 0;
+							lv = strtol(valstr,&r,10);
+							if ((valid = !errno))
+								plongs->val[plongs->num++] = lv;
+							}
+						break;
+						}
+					}
+				}
+			va_end(ap);
+			if (!valid)
+				{
+				if (otherinfo)
+					prusage(fmt, otherinfo);
+				return (lastwhole);
+				}
+			}
+		}
+	return (NULL);
+	}
+

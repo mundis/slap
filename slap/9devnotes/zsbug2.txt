@@ -1,0 +1,37 @@
+Serial-Port Hardware/Driver bug - Solaris on non-PCI SPARC workstations:
+------------------------------------------------------------------------
+
+The onboard serial ports of most pre-1997 SPARCworkstations are implemented
+as a Zilog 8530 SCC UART controlled by the Solaris "zs" driver.
+
+These UARTs only support asynchronous speeds upto 38400 baud.
+
+Unfortunately, if you request a higher speed, the "zs" driver returns
+success, even though it can not set such an asyncronous speed.
+
+Many programs expect that a request to set a baud-rate that the
+specific serial device cannot handle, will return an error. This is
+often used to probe whether a certain baud rate can be used,
+on a per-port basis.
+
+Such programs will break when used on zs-controlled ports, because
+the "zs" driver lies. slap is one of these programs.
+
+At a guess, the fault in the "zs" driver is that when being asked
+to change baud-rate, it is not checking whether the port is set for
+async or sync use.
+
+This fault does not bother other serial-ports (SBus plug-in
+serial cards, et al).
+On all the third-party add-in serial ports I have so far seen,
+the driver returns an error if you ask for a baud-rate it cannot do.
+
+The "zs" flaw exists on all versions of Solaris from 2.1 thru 2.5.1.
+I have not had the chance to test it on later releases yet, although
+I bet it is STILL broken.
+
+Recent SPARC workstations (the PCI-based ones) use Siemens 82532 ESCC
+UARTs, controlled by the "se" driver. Because these UARTs have
+64-byte input and output FIFO buffers, they should be able to handle
+much higher async baud rates. However, do not be surprised if the
+"se" driver is capable of lying, too!

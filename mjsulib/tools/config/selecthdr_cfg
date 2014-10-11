@@ -1,0 +1,131 @@
+#!/bin/sh
+# @(#)hdrs4select.cat	3.0	17may2009 MJS
+#------------------------------------------------------------------------------
+# 3.0   17may2009 MJS   compatibility with new "soft/hard" Configure mechanism,
+#                       also removal of temp files on interrupt.
+# 2.0   27sep2004 MJS   revised to be used as a Configure-callable module.
+# 1.0   03jan2001 MJS   original version.
+#------------------------------------------------------------------------------
+
+#
+#desc: Determine the platform-specific header files needed to declare the
+#desc: "select" C function and define the data-types it uses.
+
+#out: a C header-file segment that includes all the necessary system
+#out: headers to declare the "select()" function and the "fdset" and
+#out: "struct timeval" data-types that it requires.
+
+eval status='$CONF_SELECTHDRS_PROBED'
+# NOTE: this module may need to produce output every time it is called,
+# so cannot "just exit" if already probed...
+### LEAVE THIS OUT: test -n "$status" && exit "$status"
+. mod.start
+
+
+####################################################################
+# To declare "select()" and the types it needs, there are two common
+# platform-dependant common possibilities:
+#
+#       4BSD, old Linux, et al:
+#               #include <sys/types.h>
+#               #include <sys/time.h>
+#               # (select.h does not exist)
+#
+#       SunOS 5, System V, et al:
+#               #include <sys/types.h>
+#               #include <sys/select.h>
+#
+####################################################################
+status=1	# until proven otherwise
+CONF_SELECTHDRS="unknown!"
+
+
+# make sure we have C compiler ready:
+chain.___ /tmp/$$.cv c89_cmd -configure "$@" >/dev/null && . /tmp/$$.cv
+rm -f /tmp/$$.cv
+cc="$CONF_QUICK_C89X"
+test -z "$cc" && exit 1
+test "$cc" = "not found" && exit 1
+
+# try assorted header-combinations:
+# Note that the order of these tests is important (eg: on Solaris),
+# to avoid accidentally finding the "backward-compatibility" headers,
+# rather than the proper API ones.
+
+# try SystemV-, SunOS5-, newLinux-style headers:
+if test "$status" -ne 0 && trycc.___ "$CONF_QUICK_C89X" "" "" "" /tmp <<EOF ; then
+#include <sys/types.h>
+#include <sys/select.h>
+int main(void)
+        {
+        fd_set s;
+        struct timeval t;
+
+        t.tv_sec = 0;
+        t.tv_usec = 187;
+        FD_ZERO(&s);
+        FD_SET(0, &s);
+        FD_SET(1, &s);
+        FD_SET(2, &s);
+        if (select(3, &s, &s, &s, &t) < 0)
+                return (1);
+        return (0);
+        }
+EOF
+	status="$?"
+	PLAT="System V style"
+	CONF_SELECTHDRS="sys/types.h sys/times.h"
+
+# try 4BSD- and oldLinux-style headers:
+elif test "$status" -ne 0 && trycc.___ "$CONF_QUICK_C89X" "" "" "" /tmp <<EOF ; then
+#include <sys/types.h>
+#include <sys/times.h>
+int main(void)
+        {
+        fd_set s;
+        struct timeval t;
+
+        t.tv_sec = 0;
+        t.tv_usec = 187;
+        FD_ZERO(&s);
+        FD_SET(0, &s);
+        FD_SET(1, &s);
+        FD_SET(2, &s);
+        if (select(3, &s, &s, &s, &t) < 0)
+                return (1);
+        return (0);
+        }
+EOF
+	status="$?"
+	PLAT="4BSD style"
+	CONF_SELECTHDRS="sys/types.h sys/select.h"
+fi
+
+announce="$CONF_SELECTHDRS"
+test -z "$announce" && announce='<none>'
+echo "headers for select() function: ${announce}" 1>&2
+
+# emit wrapper header-file to standard-output...
+#
+echo ''
+echo "/* $PLAT platform-specific C header-file segment"
+echo ' * needed to declare the "select()" function and define the'
+echo ' * "fdset" and "struct timeval" types it needs.'
+echo ' * This segment was generated automatically, so do not edit it.'
+echo ' */'
+echo '#ifndef __HDRS_NEEDED_FOR_SELECT__'
+echo '#define __HDRS_NEEDED_FOR_SELECT__'
+if test "$status" -eq 0 ; then
+	for hdr in $CONF_SELECTHDRS ; do
+	        echo "#include <${hdr}>"
+	done
+else
+	echo "#include <unknown.h> /* oops: could not determine headers needed */"
+fi
+echo '#endif /* __HDRS_NEEDED_FOR_SELECT__ */'
+
+# set 'configure' variables:
+setvar.___ CONF_SELECTHDRS             "$CONF_SELECTHDRS"
+setvar.___ CONF_SELECTHDRS_PROBED      "$status"
+
+exit "$status"

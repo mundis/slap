@@ -1,0 +1,120 @@
+# Determine the command lines needed to construct static-link libraries.
+# Print it as a Makefile definition to stdout, and set equivalent
+# environment variables.
+#
+
+# locate an ANSI C compiler, if possible:
+#
+[ "$XACC" = "" ] && . ansic.cmd >/dev/null
+
+
+echo "probing for static-link-library settings" 1>&2
+
+# build a small C source file:
+#
+cat > /tmp/$$.c << 'EOT'
+#include <stdio.h>
+int main(ac, av)
+	int ac;
+	char **av;
+	{
+	printf("hello world\n");
+	return (0);
+	}
+EOT
+
+# determine filename extension for static-link libraries:
+#
+SLL=""
+# Start hunting with the obvious directories:
+list="/lib /usr/lib /usr/local/lib /opt/local/lib /opt/lib"
+# add contents of LD_LIBRARY_PATH:
+list="$list `echo ${LD_LIBRARY_PATH}: | sed -e 's/:/ /g'`"
+# and finish with the outside chances:
+list="$list $HOME/lib"      # you never know...
+for d in $list ; do
+	[ -d "$d" ] && ls $d | grep '\.a' >/dev/null && SLL=a
+done
+
+
+# determine commands to build static-link libraries:
+#
+AR=""
+RANLIB=""
+if [ "$SLL" != "" ] && [ "$XACC" != "" ] && $XACC -c -o /tmp/$$.o /tmp/$$.c >/dev/null 2>&1 ; then
+
+	for try in "ar -rcs" "ar -rc" "ar rcs" "ar rc" ; do
+		if $try /tmp/$$.$SLL /tmp/$$.o 2>/dev/null ; then
+			AR="$try"
+			if ( ranlib /tmp/$$.a ) 2>/dev/null ; then
+				RANLIB=ranlib
+			fi
+			break
+		fi
+	done
+fi
+
+if [ "$SLL" = "" ] ; then
+	status=1
+	SLL="unknown"
+fi
+if [ "$AR" = "" ] ; then
+	status=1
+	AR="unknown"
+fi
+if [ "$RANLIB" = "" ] ; then
+	RANLIB="tools/nothing"
+fi
+
+
+if [ "$status" = 1 ] ; then
+	echo "\007" 1>&2
+	cat << EOT 1>&2
+	*************************  W A R N I N G  ***************************
+	******								*****
+	******   Cannot determine how to build static-link libraries	*****
+	******   on this system.					*****
+	******								*****
+	*********************************************************************
+
+	If you have already installed MJSulib, you will need to manually
+	adjust the following variables in the makefile:
+
+		SLL=...
+		AR=...
+
+EOT
+	echo "Press RETURN to continue \c" 1>&2
+	read dummy
+	echo "" 1>&2
+fi
+
+# and output...
+#
+cat << EOT
+
+# The filename extension used for static-link libraries:
+#
+SLL=$SLL
+
+
+# Command that builds a named static-link library from
+# a specified set of files:
+#
+AR=$AR
+
+
+# Command to perform any required postprocessing on a
+# static-link library:
+#
+# If your platform does not need to postprocess static-link
+# libraries, use "tools/nothing".
+# Otherwise, "ranlib" is a good choice!
+#
+RANLIB=$RANLIB
+
+EOT
+
+export SLL
+export AR
+export RANLIB

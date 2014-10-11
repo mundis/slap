@@ -1,0 +1,236 @@
+'\" t
+.\" MJS Portable C Library
+.\" Module: quick-reference manual-page for pattern()
+.\"
+.\" Copyright (c) 1991-1993 Mike Spooner
+.\"----------------------------------------------------------------------
+.\" This program is free software; you can redistribute it and/or modify
+.\" it under the terms of the GNU General Public License as published by
+.\" the Free Software Foundation; either version 2 of the License, or
+.\" (at your option) any later version.
+.\"
+.\" This program is distributed in the hope that it will be useful,
+.\" but WITHOUT ANY WARRANTY; without even the implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+.\" GNU General Public License for more details.
+.\"
+.\" You should have received a copy of the GNU General Public License
+.\" along with this program; if not, write to the Free Software
+.\" Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+.\"----------------------------------------------------------------------
+.TD
+.TH pattern @LF 25jun93 "MJSulib"
+.SH NAME
+ pattern \- build a regular expression pattern
+.SH SYNOPSIS
+#include "mjsu.h"
+
+CHAR *pattern(USHORT *pat, CHAR delim, CHAR *expr);
+.SH DESCRIPTION
+\fBpattern()\fP builds an encoded pattern in the buffer 
+starting at \fIpat\fP,
+suitable for use with \fBamatch()\fP or \fBmatch()\fP 
+in matching characters.
+.LP
+The pattern is created from the "regular-expression" string \fIexpr\fP;
+the creation of the pattern stops
+with the first unescaped 
+occurrence in \fIexpr\fP of the character \fIdelim\fP.
+To prevent an ill-formed regular-expression from confounding the code,
+\fIexpr\fP
+should be terminated with a NUL character,
+whether or not a \fIdelim\fP other than NUL is given.
+.LP
+It is not necessary to know 
+the encoding used, as encoded patterns should not be manipulated directly: 
+their only use is as arguments to \fBamatch()\fP and \fBmatch()\fP.
+It is sufficient to know that the encoded pattern at \fIpat\fP 
+will never occupy
+more than twice as many (\fBUSHORT\fP) elements
+as the length of the string \fIexpr\fP,
+up to and including the terminating occurrence of \fIdelim\fP.
+.LP
+The encoded pattern is derived by interpreting the string at \fIexpr\fP as
+a series of "regular expressions".
+A regular expression is a shorthand notation
+for a set of target strings
+to be searched for in a buffer.
+Any of these target strings
+are said to "match" the regular expression.
+The following regular expressions are allowed:
+.IP
+An ordinary character is considered a regular expression
+that matches that character. \fB8-bit characters are acceptable\fP.
+.IP
+The character sequences
+"\\b", "\\f", "\\n", "\\r", "\\t", "\\v",
+in upper or lower case,
+each match
+the single special characters representing
+backspace (BS),
+formfeed (FF),
+newline (NL),
+return (CR),
+tab (HT),
+and vertical tab (VT),
+respectively.
+.IP
+In addition,
+an arbitrary 8-bit character may be
+matched by
+"\\\fIddd\fP" where \fIddd\fP is the
+one to three digit octal value
+of the character code;
+this is the safest way to match most non-printing characters (eg: the ASCII
+"RS" character),
+and is the only way to match a NUL character, '\\0'.
+.IP
+A '?' matches any single character except a newline.
+.IP
+A '^' as the leftmost character of a series of regular expressions
+constrains the match to begin at the 
+start (left) of the target characters.
+.IP
+A '^' following another regular expression matches zero or more occurrences
+of that expression.
+A '^' may thus match a null string, which occurs
+at the beginning of a line, between pairs of characters, or
+at the end of the line.
+A '^' enclosed in "\\(" and "\\)", or following either a '\\'
+or an initial '^',
+is taken as a literal '^', however.
+.IP
+A literal '^',
+as just defined,
+or a '^' in any position other than the ones just mentioned,
+matches a '^' from the target string.
+.IP
+A '*' matches zero or more characters, not including newline.
+It is conceptually identical to the sequence "?^".
+.IP
+A character string enclosed in square brackets "[]" matches a
+single character that may be
+.ul
+any
+of the characters in
+the bracketed string, but no other.
+However, if the first character of the string is a '!',
+then the expression matches any character
+.ul
+except
+the ones in the bracketed string and newline.
+Inside the bracketed string,
+a range of characters in the character collating sequence
+may be indicated by the
+three-character sequence <low-character>, '-', <high-character>.
+If <low-character> is greater than <high-character>,
+the expression is ignored.
+Thus,
+[a0-9b] is a regular expression that
+would (assuming ASCII encoding) match a single character which is
+either a decimal digit or the letter a or b.
+When matching a literal "-", the "-" must be the first or last character
+in the bracketed list,
+or must immediately follow a range, as in [0-9-+];
+otherwise it is taken to specify a range of characters.
+.IP
+A regular expression enclosed between the sequences "\\(" and "\\)"
+tags this expression in a way 
+detectable by the \fBamatch()\fP routine,
+but otherwise has no effect on the characters the expression matches.
+.IP
+A concatenation of regular expressions matches the concatenation
+of strings matched by individual regular expressions.
+In other words, a regular expression composed of a series of
+"sub-expressions" will match a concatenation of 
+target character strings implied by
+each of the individual "sub-expressions".
+.IP
+A '$' as the rightmost character after a series of regular expressions
+constrains the match, if any, to end at the end of the target characters
+prior to the newline.
+.LP
+Note that arbitrary grouping and alternation are not fully
+supported by this notation,
+as the expressions accepted are not the full class
+of regular expressions beloved of mathematicians.
+.SH RETURNS
+If no syntax errors were found in \fIexpr\fP,
+pattern returns a pointer to the occurrence of \fIdelim\fP that
+terminated its scan.
+Otherwise pattern returns NULL.
+.SH EXAMPLE
+To put out only those lines that have a 'T' as their seventh character:
+.nf
+
+	pattern(patbuf, '/', "^??????T/");
+	while (fgets(buf, BUFSIZ, pf) && match(buf, strlen(buf), patbuf))
+		fputs(buf, stdout);
+
+.fi
+.SH SEE ALSO
+\fBamatch(@LF)\fP, \fBmatch(@LF)\fP,
+\fBmjsu(@MI)\fP.
+
+The masochists among you may gain pleasure by contemplating the
+character-set-dependent behaviour of
+\fBisalpha(), isdigit(), isprint(), strcoll()\fP and \fBsetlocale()\fP,
+all as defined
+by ANSI standard X3.159-1989. See BUGS for the reason why.
+.SH AVAILABILITY
+\fBpattern()\fP
+is written in C, conforming to ANSI X3.159-1989 (hosted program environment).
+.SH BUGS
+The precise meaning of regular-expressions using ranges ("[]") or
+octal character-codes ("\\\fIddd\fP"),
+is dependent on the character-set imposed by the execution environment.
+In the worst case, where the character-set of
+the execution environment is selectable by the user, the meaning of such
+regular-expressions could change from one invocation of
+the program to the next...!
+.LP
+For example, the expression
+"[a-Z]" matches any alphabetic character of the 7-bit ASCII character-set, but
+would exclude some accented (but still alphabetic) characters of
+the ISO-8859-1 character-set, and
+would have a completely different behaviour with an EBCDIC character-set.
+And some character-sets 
+do not have
+.ul
+any 
+"alphabetic" characters at all...
+.LP
+Future revisions of the regular-expression language may allow pattern
+matching against specified "classes" of characters, tested for with the
+standard C functions \fBisalpha()\fP, \fBisprint()\fP, \fBisdigit()\fP, etc.
+This would allow
+.ul
+slightly
+more character-set-independent expressions to be
+constructed, assuming that each of the target execution environments support
+an appropriate and fully-working "locale" to execute within.
+.LP
+But don't get your hopes up, because
+all "locale" support so far observed is either inappropriate or
+only partial, or both. I could tell you an amusing story about
+Sun's "iso_8859-1" locale and the way it makes proper operation of
+the standard \fBstrcoll()\fP function impossible to even specify...
+.LP
+These inconveniences are not limited to \fBpattern()\fP: they apply
+to all known
+implementations of \fBgrep, ex, vi, sh, csh, ksh, bash\fP and
+almost all other programs
+that do pattern-matching.
+.LP
+Unfortunately, but unavoidably, these inconveniences also apply to some of the
+specifications of the IEEE POSIX 1003.2 standard...
+.LP
+On a different but apparently similar theme, 
+the term "newline" is technically inaccurate - the term
+"linefeed" is what is intended. This is only an issue if you are using
+\fBpattern()\fP to process material retrieved from files that are "binary"
+in the
+sense described by the C Language Standard (ANSI X3.159-1989).
+Better to
+avoid
+pattern-matching of "binary" data!

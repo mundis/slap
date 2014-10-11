@@ -1,0 +1,117 @@
+#!/bin/sh
+# @(#)makewhatis.cmd	3.0	17may2009 MJS
+#------------------------------------------------------------------------------
+# 3.0   17may2009 MJS   compatibility with new "soft/hard" Configure mechanism,
+#                       also removal of temp files on interrupt.
+# 2.0   27sep2004 MJS   revised to be used as a Configure-callable module.
+# 1.0   15aug1998 MJS   original version.
+#------------------------------------------------------------------------------
+#
+#desc: Determine the command-line prefix used to to update the indexes of
+#desc: a named manpage directory.
+#desc:
+#desc: 'Configure' variables: CONF_MAKEWHATIS
+#desc:
+#desc: The equivalent makefile variables (if any) have the same names without
+#desc: the leading 'CONF_'.
+
+#out: relevant "makefile" variable-definitions.
+
+
+eval status='$CONF_MAKEWHATIS_PROBED'
+test -n "$status" && exit "$status"
+. mod.start
+
+############################################################################
+#########         module-specific '-configure' actions          ############
+############################################################################
+status=0	# unless proven otherwise
+
+. "$my_full_dirname"/cmn_bin_dirs   # determine bin dirs
+
+# module-specific standing data values for 'cmd' modules:
+#
+use_sys_dirs=N		# search system bin dirs as well as standard places?
+use_compat_dirs=Y	# search compatibility bin dirs as well?
+use_env_dirs=Y		# search $PATH as well as standard places?
+
+
+# setup list of "normal" dirs to use if searching...
+dirs="$CONF_STDBINS"
+# in preferred priority order!:
+test "$use_sys_dirs" = Y && dirs="$dirs:$CONF_SYSBINS"
+test "$use_env_dirs" = Y && dirs="$dirs:$PATH"
+test "$use_compat_dirs" = Y && dirs="$dirs:$CONF_SCPBINS"
+
+
+# compute a default "do nothing successfully" command...
+exec 9>&2
+exec 2>/dev/null
+for default in true "$pwd"/tools/nothing pwd ; do
+	"$default" </dev/null && break
+done
+exec 2>&9
+
+# hunt for the real command:
+CONF_MAKEWHATIS=''
+oldIFS="$IFS"
+IFS=':'
+for d in $dirs '' ; do
+	##echo "dir [ $d ]"
+	IFS="$oldIFS"
+	case "$d" in
+	/*)	# absolute
+		;;
+	''|'.')	# implicit $pwd, ignore
+		continue
+		;;
+	*)	# relative, make absolute
+		if test "$pwd" = / ; then
+			d="/$d"		# See POSIX.1 Appendix B
+		else
+			d="$pwd/$d"
+		fi
+		;;
+	esac
+	if test -f "$d"/makewhatis && test -x "$d"/makewhatis ; then
+		CONF_MAKEWHATIS="$d/makewhatis"
+		status=0
+		break
+	elif test -f "$d"/catman && test -x "$d"/catman ; then
+		CONF_MAKEWHATIS="$d/catman -w -M"
+		status=0
+		break
+	fi
+	IFS=':'
+done
+IFS="$oldIFS"
+
+
+# emit makefile-segment to stdout:
+#
+cat <<EOT
+
+# Command-prefix used to update manpage index for a named directory;
+# If none known, just use a command that "does nothing" successfully...
+#
+MAKEWHATIS=$CONF_MAKEWHATIS
+
+EOT
+
+# and set 'Configure' variables:
+#
+setvar.___ CONF_MAKEWHATIS "$CONF_MAKEWHATIS"
+setvar.___ CONF_MAKEWHATIS_PROBED "$status"
+
+# announce results:
+if test -z "$CONF_MAKEWHATIS" ; then
+	# cannot determine
+	announce="<none>"
+	CONF_MAKEWHATIS="$default"
+	status=1
+else
+	announce="$CONF_MAKEWHATIS ..."
+fi
+echo "command to reindex manpage directories: $announce" 1>&2
+
+exit "$status"

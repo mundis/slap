@@ -1,0 +1,232 @@
+#!/bin/sh
+# Create "source distribution", in all the formats listed in dist.info.
+#
+# Flags:
+#	-od DIR		use DIR as the output directory;
+#			default is /var/spool/pkg if it exists,
+#			otherwise /tmp.
+#
+me="$0"
+
+remark()
+	{
+	echo "$@" 1>&2
+	}
+
+error()
+	{
+	remark "${me} error: $@"
+	status=1	# in case we are trapping exit
+	exit 1	  # in case we are not...!
+	}
+
+USAGE="usage: $0 [ -help ] [ -od directory ]"
+usage()
+	{
+	remark "$USAGE"
+	status=1
+	exit 1
+	}
+
+# core initialisation:
+#
+if test -f ./dist.info ; then
+	. ./dist.info
+else
+	echo "$0 error: cannot find ./dist.info"
+	exit 1
+fi
+pkg="${author}$pkgname"
+
+help()
+	{
+	cat <<EOT
+$USAGE
+
+	$me creates "source" distribution packages of the
+	"$pkgname" software, in all the following formats:
+
+		$formats
+
+	The -od option can be used to specify which directory the output
+	package(s) should be written to. The default is /var/spool/pkg if
+	it exists, otherwise /tmp.
+
+EOT
+	status=2
+	exit 2
+	}
+
+
+# parse and validate flags:
+od="/var/spool/pkg"
+test -d "$od" || od=/tmp
+while test -n X ; do     # cheap forever loop
+	case "$1" in
+	-od)
+		test -z "$2" && usage
+		test -d "$2" || error "$2 is not a directory"
+		od="$2"
+		shift ; shift
+		;;
+	-help|--help)
+		help
+		;;
+	-*)
+		usage
+		;;
+	*)
+		# end of flags...
+		break
+		;;
+	esac
+done
+
+
+fullname="${pkgname}-$major"
+test -n "$minor" && fullname="${fullname}.$minor"
+test -n "$micro" && fullname="${fullname}.$micro"
+
+echo "Creating source distributions of ${fullname}..."
+if test -f makefile ; then
+	make distclean || exit 1
+	echo "\n"
+fi
+
+trap "rm -rf /tmp/${fullname}" 0 1 2 3 6 13 15
+mkdir /tmp/${fullname} || exit 1
+tar -cf - . | ( cd /tmp/${fullname} && tar -xf - ) || exit 1
+tools/mktree $od || exit 1
+
+
+
+simple_zip()
+	{
+	# args: input-files
+	# output: stdout
+
+	zipstatus=1	# until proven otherwise
+	exec 9>&2 2>/dev/null	# discard stderr, but remember where it pointed
+
+	for try in zip pkzip pkzip25 pkzip26 ; do
+		case "$try" in
+		zip)
+			ZIPOPT=''
+			export ZIPOPT
+			store='.Z:.taz:.bz2:.bz:.tbz:.tbz2:.gz:.tgz:.tiff:.jpg:.png:.cab'
+			zip -q -r -y -n "$store" - "$@" && zipstatus=0
+			exec 2>&9
+			;;
+		pkzip*)
+			# NOTE: for "-dir" to work properly, directory-names must have
+			# a *quoted* '/*' appended....
+			#
+			pkzip="$try -default"
+			pkflags="-add -filetype=all -links=none -silent -dir"
+
+			for f in "$@" ; do
+				if test -d "$f" ; then
+					spec="$f/*"
+				else
+					spec="$f"
+				fi
+				exec 9>&2 2>/dev/null
+				if $pkzip $pkflags /tmp/$$.zip "$spec" ; then
+					exec 2>&9
+				else
+					exec 2>&9
+					rm -f /tmp/$$.zip
+					break
+				fi
+			done
+			rm -f pkzip.cfg	# pkzip always leaves this junk around
+			if test -f /tmp/$$.zip ; then
+				zipstatus=0
+				cat /tmp/$$.zip 2>/dev/null
+				rm -f /tmp/$$.zip
+				break
+			fi
+			;;
+		esac
+	done
+
+	exec 2>&9	# restore stderr
+
+	if test "$zipstatus" -ne 0 ; then
+		echo "error: cannot create zip files:" \
+			"need 'zip', or a version of 'pkzip'" 1>&2
+		exit 1
+	fi
+	}
+
+simple_tar()
+	{
+	# as tar cannot handle some long filenames, we try pax then cpio first...
+	# args: input-files
+	# output: stdout
+
+	exec 9>&2
+	exec 2>/dev/null
+
+	if pax -w -x ustar "$@" ; then
+		exec 2>&9
+	elif for f in "$@" ; do
+			if test -d "$f" ; then
+				find "$f" -depth -print
+			else
+				echo "$f"
+			fi
+			done | cpio -o -H tar -V ; then
+		exec 2>&9
+	elif tar -cf - "$@" ; then
+		exec 2>&9
+	else
+		echo "error: cannot create tar files: need 'pax', 'cpio' or 'tar'" 1>&2
+                exit 1
+	fi
+	}
+
+echo "formats [$formats]"
+for f in $formats ; do
+	trap 'rm -rf $target' 1 2 3 13 15
+	case $f in
+	tar)	target="$od/${fullname}.tar"
+		echo "$target"
+		rm -f "$target"
+		( cd /tmp && simple_tar "$fullname" >"$target" ) || \
+			exit 1
+		;;
+	tgz)	target="$od/${fullname}.tgz"
+		echo "$target"
+		rm -f "$target"
+		( cd /tmp && simple_tar "$fullname" | \
+			gzip -c >"$target" ) || \
+				exit 1
+		;;
+	tbz)	target="$od/${fullname}.tbz"
+		echo "$target"
+		rm -f "$target"
+		unset BZIP
+		unset BZIP2
+		( cd /tmp && simple_tar "$fullname" | \
+			bzip2 -k -q -c >"$target" ) || \
+				exit 1
+		;;
+	taz)	target="$od/${fullname}.taz"
+		echo "$target"
+		rm -f "$target"
+		( cd /tmp && simple_tar "$fullname" | \
+			compress -c -f > "$target" ) || \
+				exit 1
+		;;
+	zip)	target="$od/${fullname}.zip"
+		echo "$target"
+		rm -f "$target"
+		( cd /tmp && simple_zip "$fullname" >"$target" ) || \
+			exit 1
+		;;
+	*)	echo "Sorry, \"$f\" format not supported" 1>&2
+		exit 1
+		;;
+	esac
+done

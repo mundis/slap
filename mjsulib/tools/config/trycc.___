@@ -1,0 +1,62 @@
+#!/bin/sh
+cc="$1"
+cflags="$2"
+ldflags="$3"
+libs="$4"
+workdir="$5"
+sentinel="$6"
+
+if test -z "$cc" || test "$cc" = -help || test "$cc" = --help || \
+		test "$cc" = "-?" || test -z "$workdir" ; then
+	echo "usage: $0 cc cflags ldflags libs workdir [ sentinel ] < file.c" 1>&2
+	exit 9
+fi
+if test -d "$workdir" && test -w "$workdir" && cd "$workdir" ; then
+	sleep 0
+else
+	echo "$0 error: cannot use workdir: $workdir" 1>&2
+	exit 9
+fi
+
+if test -t 0 ; then
+	# stdin is a terminal!
+	echo "$0 WARNING: reading from terminal, ctrl-D to continue" 1>&2
+fi
+
+sigs="1 2 3 13 15"
+for sig in $sigs ; do
+	trap 'trap "" $sigs ; rm -f scooby scooby.[cos] ; exit 131' $sig
+done
+
+/bin/cat >scooby.c
+# divert our stderr, in case the potential program
+# is not there, and so on, and so on...
+exec 9>&2
+exec 2>/dev/null
+##echo "[$cc $cflags $ldflags -o scooby.exe scooby.c $libs]" 1>&9
+$cc $cflags $ldflags -o scooby.exe scooby.c $libs </dev/null
+exec 2>&9
+# Careful: some compilers do not give generated program
+# files execute permissions!
+if test -f ./scooby.exe &&
+		chmod 775 ./scooby.exe && \
+		test -x ./scooby.exe &&
+		./scooby.exe </dev/null >/dev/null 2>&1 ; then
+	./scooby.exe
+	sleep 0
+else
+	rm -f scooby scooby.[cos]
+	exit 1
+fi
+status=1	# until proven otherwise
+if test -n "$sentinel" ; then
+	if test "`./scooby.exe </dev/null 2>/dev/null`" = "$sentinel" ; then
+		status=0
+	fi
+else
+	if ./scooby.exe </dev/null >/dev/null 2>&1 ; then
+		status=0
+	fi
+fi
+rm -f scooby.exe scooby.[cos]
+exit "$status"

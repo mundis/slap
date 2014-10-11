@@ -1,0 +1,96 @@
+'\" t
+.\" MJS Portable C Library
+.\" Module: quick-reference manual-page for MBM bitmap formats
+.\"
+.\" Copyright (c) 1997 Mike Spooner
+.\"----------------------------------------------------------------------
+.\" This program is free software; you can redistribute it and/or modify
+.\" it under the terms of the GNU General Public License as published by
+.\" the Free Software Foundation; either version 2 of the License, or
+.\" (at your option) any later version.
+.\"
+.\" This program is distributed in the hope that it will be useful,
+.\" but WITHOUT ANY WARRANTY; without even the implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+.\" GNU General Public License for more details.
+.\"
+.\" You should have received a copy of the GNU General Public License
+.\" along with this program; if not, write to the Free Software
+.\" Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+.\"----------------------------------------------------------------------
+.TD
+.TH mbm @FF 23jun97 "MJSulib"
+.SH NAME
+mbm \- format of MBITMAP files and structures
+.SH SYNOPSIS
+#include "mjsu.h"
+.SH DESCRIPTION
+The MBITMAP structure is used to represent rectangular monochrome bitmaps
+with upto 65535 rows and 65535 columns.
+.SS "In-Memory Structure"
+The \fBmbm_*\fP functions in the library utilise the following structure to
+represent bitmaps:
+.nf
+
+	typedef struct
+		{
+		USHORT height;
+		USHORT width;
+		BYTE *bits;
+		} MBITMAP;
+
+.fi
+\fIheight\fP and \fIwidth\fP are in units of "dots", "pixels" or "bits".
+\fIbits\fP is a pointer to dynamically-allocated storage holding the
+raw bits of the bitmap.
+.LP
+The raw bits are stored consecutively, row-major,
+in consecutive bytes
+(arranged most-sigificant-bit first), with no per-row padding.
+.LP
+Thus the first column of the top row
+of the bitmap is stored in the most-siginificant-bit of \fIbits\fP[0], the
+second column of the top row is stored in the second-most-significant-bit
+of \fIbits\fP[0], and so on.
+.LP
+The number of
+bytes allocated for the raw bits is given by the formula:
+.nf
+
+	(((\fIheight\fP * \fIwidth\fP) + 7) / 8)
+
+.fi
+.SS "External Files"
+MBITMAP structures can be saved in or loaded from external files, using
+\fBmbm_save(@LF)\fP and \fBmbm_load(@LF)\fP. In such a file, each
+bitmap consists of (in order);
+.nf
+
+	the four ASCII bytes "<MBM"
+	an ASCII digit specifying the file-format version
+	an ASCII carriage-return character
+	an ASCII linefeed character
+	8 bits of "flags", currently not used (should be zero)
+	\fIheight\fP as a 16-bit unsigned integer
+	\fIwidth\fP as a 16-bit unsigned integer
+	the raw bits of the bitmap, ordered as above
+
+.fi
+\fIheight\fP and \fIwidth\fP are stored "least-significant-byte-first"
+(ie: in 8086 byte-order), in two's-complement format.
+.LP
+By convention, files containing only MBITMAPs
+usually have the filename extension
+".mbm",
+and are referred to as "M-B-M files". Such files can contain multiple
+bitmaps, one after the other.
+.LP
+\fBmbm_save()\fP and \fBmbm_load()\fP can be used to embed and extract
+MBITMAPs from arbitrary types of files.
+.SH VERSION
+The external file-format described above is MBM version 1.
+Future versions may utilise compression techniques.
+.SH SEE ALSO
+\fBmbm_load(@LF)\fP, \fBmbm_save(@LF)\fP.
+
+\fBmbm_bits(@LF)\fP, et al.

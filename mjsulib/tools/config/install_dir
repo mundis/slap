@@ -1,0 +1,78 @@
+#!/bin/sh
+# @(#)install.dir	2.0	05oct2009 MJS
+#------------------------------------------------------------------------------
+# 2.0   05oct2009 MJS	compatibility with new "soft/hard" Configure mechanism,
+#			also removal of temp files on interrupt.
+# 1.0   27sep2004 MJS   original version.
+#------------------------------------------------------------------------------
+
+#desc: Determine the pathname of the top-level installation directory.
+#desc:
+#desc: 'Configure' variables: CONF_INSTALL_DIR
+#desc:
+#desc: The equivalent makefile variables (if any) have the same names without
+#desc: the leading 'CONF_'.
+
+#opt: -prefix=PATHNAME
+#opt: 	specifies the top-level installation directory;
+#opt:	the default is package-specific.
+
+#out: relevant "makefile" variable-definitions.
+
+
+
+eval status='$CONF_INSTALL_DIR_PROBED'
+test -n "$status" && exit "$status"
+. mod.start
+
+
+############################################################################
+#########         module-specific '-configure' actions          ############
+############################################################################
+status=0	# until proven otherwise
+
+# process additional 'Configure' command-line flags:
+#
+for flag in "$@" ; do
+	case "$flag" in
+	-prefix=*|--prefix=*)
+		CONF_INSTALL_DIR="`echo $flag | sed -e 's/^[^=]*=//'`"
+		test -z "$CONF_INSTALL_DIR" && exec "$my_full_pathname" -help
+		# the makefile will should this directory if possible,
+		# but *we* should warn if it would be impossible!
+		if test -f "$CONF_INSTALL_DIR" ; then
+			alert.___ ERROR \
+				User-specified top-level installation \
+				directory "(${CONF_INSTALL_DIR})" \
+				. 'is a plain file!' . \
+				. You should rerun Configure \
+				with a different "'-prefix'" flag.
+			CONF_INSTALL_DIR=/some/where
+			status=1
+		fi
+		;;
+	esac
+done
+
+
+# emit makefile-segment to stdout:
+#
+cat <<EOT
+
+# Where are we to be installed?
+# (specify the top-level directory, not the "bin", "lib" or "man" subdirectory)
+#
+INSTALL_DIR=$CONF_INSTALL_DIR
+
+EOT
+
+# set 'Configure' variables:
+#
+setvar.___ "CONF_INSTALL_DIR"		"$CONF_INSTALL_DIR"
+setvar.___ "CONF_INSTALL_DIR_PROBED"	"$status"
+
+# and report findings:
+#
+echo "setting top-level installation directory to: $CONF_INSTALL_DIR" 1>&2
+
+exit "$status"

@@ -1,0 +1,161 @@
+#!/bin/sh
+# @(#)posix1.api	3.0	17may2009 MJS
+#------------------------------------------------------------------------------
+# 3.0	17may2009 MJS	compatibility with new "soft/hard" Configure mechanism,
+#			also removal of temp files on interrupt.
+# 2.0	27sep2004 MJS	revised to be used as a Configure-callable module.
+# 1.0	15aug1998 MJS	original version.
+#------------------------------------------------------------------------------
+capi_name=POSIX1
+capi_desc="POSIX.1-1988"
+capi_enablers='-D_POSIX_SOURCE'		# API enablers
+capi_indicators='_POSIX_SOURCE >= 1'	# API-defined indicators
+capi_clevels="89 89X 99"
+
+
+# any additional or platform-specific extra C-compiler flags we may require:
+capi_try_cflags=""
+capi_try_ldflags=''
+capi_try_libs=''
+
+# any other APIs we depend on:
+capi_dep_cflags=''
+capi_dep_ldflags=''
+capi_dep_libs=''
+
+#desc: Determine the C-compiler flags needed to get the
+#desc: $capi_desc API, if available.
+#desc:
+#desc: If the API is not available, $0 returns failure and
+#desc: the C symbol $capi_indicator will be undefined.
+#desc: Optional POSIX facilities, such as terminal job-control,
+#desc: should be tested-for using POSIX-defined feature-test macros and/or
+#desc: POSIX sysconf()/pathconf()/fpathconf() calls.
+
+#cvar: CONF_${capi_name}_CFLAGS/_LDFLAGS/_LIBS
+
+#out: relevant "makefile" variable-definitions.
+
+
+eval status='$CONF_'"${capi_name}"'_PROBED'
+test -n "$status" && exit "$status"
+. mod.start
+
+
+# build a small POSIX.1-1988 ANSI C source file that can distinguish
+# POSIX.1-1988 from pre-POSIX or almost-but-not-really-POSIX environments...
+#
+cat > /tmp/$$.c <<'EOT'
+#define _POSIX_SOURCE
+#include <unistd.h>	/* sic */
+#include <stdio.h>
+#include <stdlib.h>
+#include <termios.h>	/* sic */
+#include <dirent.h>	/* sic */
+#include <fcntl.h>
+#include <signal.h>
+#include <errno.h>
+#include <limits.h>
+
+void interrupted(int sig)
+	{
+	pid_t pid;
+
+	pid = getpid();
+	printf("", pid, sig);	/* suppress optimisation! */
+	}
+
+struct termios t;
+
+int main(unsigned int ac, char **av)
+	{
+	char *s;
+	int fd;
+	DIR *d;
+	struct dirent *pe;
+	struct sigaction sa;
+	sigset_t omask;
+
+	/* not interested in success, only in callability... */
+	#if defined(_POSIX_VDISABLE) && \
+		defined(_POSIX_ARG_MAX) && defined(_POSIX_MAX_CANON)
+	if ((d = opendir(".")))
+		{
+		rewinddir(d);
+		while ((pe = readdir(d)))
+			sleep(0);
+		closedir(d);
+		}
+
+	/* POSIX safe-signal-handling: */
+	sa.sa_handler = interrupted;
+        sa.sa_flags = 0;
+	sigfillset(&sa.sa_mask);
+	sigprocmask(SIG_BLOCK, &sa.sa_mask, &omask);
+        sigemptyset(&sa.sa_mask);
+	if (!sigismember(&omask, SIGHUP))
+		sigaddset(&sa.sa_mask, SIGHUP);
+	if (!sigismember(&omask, SIGINT))
+		sigaddset(&sa.sa_mask, SIGINT);
+	if (!sigismember(&omask, SIGQUIT))
+		sigaddset(&sa.sa_mask, SIGQUIT);
+	if (!sigismember(&omask, SIGTERM))
+		sigaddset(&sa.sa_mask, SIGTERM);
+	if (!sigismember(&omask, SIGUSR1))
+		sigaddset(&sa.sa_mask, SIGUSR1);
+	if (!sigismember(&omask, SIGUSR2))
+		sigaddset(&sa.sa_mask, SIGUSR2);
+	sigprocmask(SIG_BLOCK, &omask, NULL);
+	sigprocmask(SIG_BLOCK, &sa.sa_mask, NULL);
+	sigaction(SIGHUP, &sa, NULL);
+	sigaction(SIGINT, &sa, NULL);
+	sigaction(SIGQUIT, &sa, NULL);
+	sigaction(SIGTERM, &sa, NULL);
+	sigaction(SIGUSR1, &sa, NULL);
+	sigaction(SIGUSR2, &sa, NULL);
+	sigprocmask(SIG_UNBLOCK, &sa.sa_mask, NULL);
+	sigprocmask(SIG_UNBLOCK, &omask, NULL);
+	
+	/* POSIX-specific fcntls and file-descriptor constants */
+	if ((fd = fcntl(STDIN_FILENO, F_DUPFD)) >= 0)
+		{
+		int fdflags, flflags;
+		fdflags = fcntl(fd, F_GETFD);
+		if ((flflags = fcntl(fd, F_GETFL, 0)) >= 0)
+			fcntl(fd, F_SETFL, flflags|O_NONBLOCK);
+		/* POSIX "new termio" interface */
+		errno = 0;
+		if ((tcflush(fd, TCIFLUSH) < 0) && (errno != EAGAIN) &&
+				(errno != ENOTTY) && (errno != EIO))
+			return (EXIT_FAILURE);
+		errno = 0;
+		if (tcgetattr(fd, &t) == 0)
+			{
+			pid_t g;
+			if ((g = tcgetpgrp(STDERR_FILENO)) >= 0)
+				{
+				setpgrp();
+				tcsetpgrp(STDOUT_FILENO, g);
+				}
+			errno = 0;
+			if (!ttyname(STDERR_FILENO) && (errno != ENOTTY))
+				sleep(0);
+			}
+		else if (errno == ENOSYS)
+			return (EXIT_FAILURE);
+		else if (cfgetispeed(&t))
+			write(STDOUT_FILENO, "", 0);
+		}
+	/* check for obvious "toy" implementations */
+	if (pathconf("/", _PC_PATH_MAX) <= 0L)
+		return (EXIT_FAILURE);
+	if (sysconf(_SC_CHILD_MAX) < _POSIX_CHILD_MAX)
+		return (EXIT_FAILURE);
+	return (EXIT_SUCCESS);
+	#else
+	return (EXIT_FAILURE);
+	#endif
+	}
+EOT
+
+. mod.capisearch

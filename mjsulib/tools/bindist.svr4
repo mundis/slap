@@ -1,0 +1,197 @@
+#!/bin/sh
+# Create SVR4 "installable package"
+#
+# Flags:
+#	-od DIR	use DIR as the output directory; default is /var/spool/pkg.
+#	-ds 	create a "datastream-format" directly-installable package,
+#		as the file {outputdir}/{packagename}.pkg
+#	-fs	create a "filesystem-format" directly-installable package,
+#		as the directory {outputdir}/{packagename}
+#
+# Both -ds and -fs can be specified, and at least one of them *must* be.
+#
+# NOTE: traditionally, packages distributed on disk media (CDROM, diskette,
+# etc) are in "filesystem format"; whereas those distributed via the 'Net
+# are typically in "datastream format". Both formats can be directly
+# installed using "pkgadd".
+#
+me="`basename $0`"
+status=0
+
+remark()
+	{
+	echo "$@" 1>&2
+	}
+
+error()
+	{
+	remark "${me} error: $@"
+	status=1	# in case we are trapping exit
+	exit 1		# in case we are not...!
+	}
+
+USAGE="usage: $0 [ -help -ds -fs ] [ -od directory ]"
+usage()
+	{
+	remark "$USAGE"
+	status=1
+	exit 1
+	}
+
+
+# core initialisation:
+#
+if test -f ./dist.info ; then
+	. ./dist.info
+else
+	error "cannot find ./dist.info"
+fi
+pkg="${author}$pkgname"
+
+
+help()
+	{
+	cat <<EOT
+$USAGE
+
+	$me creates the directly-installable UNIX SVR4 software
+	package "$pkg", from source.
+
+	The -od option can be used to specify which directory the output
+	package(s) should be written to. The default is /var/spool/pkg.
+
+	The -ds option specifies that a "datastream format" package should
+	be created. The resulting package can be installed with the command:
+
+		pkgadd -d {output_directory}/${pkg}.pkg
+
+	The -fs options specifies that a "filesystem format" package should
+	be created. The resulting package can be installed with the command:
+
+		pkgadd $pkg
+
+	or (if -od was specified):
+
+		pkgadd -d {output_directory} $pkg
+
+	At least one of -ds and/or -fs must be given.
+EOT
+	status=2
+	exit 2
+	}
+
+
+# parse and validate flags:
+od=/var/spool/pkg
+ds=''
+fs=''
+while test -n X ; do	# cheap forever loop
+	case "$1" in
+	-ds)
+		ds=yes
+		shift
+		;;
+	-fs)
+		fs=yes
+		shift
+		;;
+	-od)
+		test -z "$2" && usage
+		test -d "$2" || error "$2 is not a directory"
+		od="$2"
+		shift ; shift
+		;;
+	-help|--help)
+		help
+		;;
+	-*)
+		usage
+		;;
+	*)
+		# end of flags...
+		break
+		;;
+	esac
+done
+test -z "$ds" && test -z "$fs" && \
+	error "must specify at least one of -ds, -fs"
+
+
+# start construction...
+#
+if test -f makefile ; then
+	make -s distclean || exit 1
+fi
+
+trap "rm -rf /tmp/$$" 0
+trap 'exit 1' 1 2 3 6 13 15
+tools/mktree /tmp/$$/files || exit 1
+tools/mktree /tmp/$$/spool || exit 1
+tools/mktree ${spool=/var/spool/pkg} || exit 1
+rm -rf /tmp/$$/root
+cp -r svr4.info /tmp/$$/root || exit 1
+chmod 777 /tmp/$$/root || exit 1	# enable removal!
+
+
+pkg="${author}$pkgname"
+version="${major=0}.${minor=0}"
+test -n "$micro" && test "$micro" -gt 0 && version="${version}.${micro}"
+
+test -f svr4.info/pkgparam.sh && sh svr4.info/pkgparam.sh | \
+	grep -v 'NAME=' | \
+	grep -v 'PKG=' | \
+	grep -v 'EMAIL='		>/tmp/$$/root/pkginfo
+. /tmp/$$/root/pkginfo || exit 1
+# if ARCH was not defined by the provided pkgparam.sh, then generate
+# a suitably general-purpose value (pkgmk uses `uname -m` by default,
+# which is almost never what is wanted - `uname -p` would be better - so
+# we usually *must* override the pkgmk default value for ARCH).
+#
+if test -z "$ARCH" ; then
+	exec 9>&2		# remember stderr
+	exec 2>/dev/null	# discard error-output
+	ARCH="`uname -p`"
+	test -z "$ARCH" && ARCH="`/usr/bin/mach`"
+	test -z "$ARCH" && ARCH="`/usr/ucb/mach`"
+	test -z "$ARCH" && ARCH="`isalist | awk '{ print $NF }'`"
+	test -z "$ARCH" && ARCH="unknown"
+	exec 2>&9		# restore stderr
+fi
+echo "preparing SVR4 package ${pkg}, $version (${ARCH})"
+echo "NAME=$desc"	>>/tmp/$$/root/pkginfo
+echo "PKG=$pkg"		>>/tmp/$$/root/pkginfo
+echo "EMAIL=$emailaddr"	>>/tmp/$$/root/pkginfo
+
+./Configure -prefix=/tmp/$$/files >/dev/null || exit 1
+# NOTE: we prevent trouble with absolute-pathnames in the makefile
+# by overriding the ROOT_DIR variable (which defaults to empty):
+ROOT_DIR=/tmp/$$/files make -s install || exit 1	# into /tmp/$$/files
+make -s distclean
+if pkgmk -o -d "/tmp/$$/spool" -f /tmp/$$/root/prototype \
+		-b /tmp/$$/files -r /tmp/$$/root \
+		-a "$ARCH" -v "$version" \
+		-p "`date`" >/dev/null 2>/tmp/$$/errs ; then
+	echo ''
+else
+	error "`cat /tmp/$$/errs`"
+	exit 1
+fi
+
+if test -n "$fs" ; then
+	echo "creating filesystem-format package as $od/$pkg"
+	if pkgtrans -o /tmp/$$/spool $od all >/dev/null 2>/tmp/$$/errs ; then
+		echo ''
+	else
+		error "`cat /tmp/$$/errs`"
+	fi
+fi
+if test -n "$ds" ; then
+	echo "creating datastream-format package as $od/${pkg}.pkg"
+	if pkgtrans -o -s /tmp/$$/spool "$od/${pkg}.pkg" all >/dev/null 2>/tmp/$$/errs ; then
+		echo ''
+	else
+		error "`cat /tmp/$$/errs`"
+	fi
+fi
+echo "$me completed successfully"
+exit 0

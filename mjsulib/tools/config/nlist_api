@@ -1,0 +1,65 @@
+#!/bin/sh
+# @(#)nlist.api	3.0	17may2009 MJS
+#------------------------------------------------------------------------------
+# 3.0	17may2009 MJS	compatibility with new "soft/hard" Configure mechanism,
+#			also removal of temp files on interrupt.
+# 2.0	27sep2004 MJS	revised to be used as a Configure-callable module.
+# 1.0	15aug1998 MJS	original version.
+#------------------------------------------------------------------------------
+capi_name=NLIST
+capi_desc='SVR4-style "nlist()"'
+capi_enablers=''			# API-defined enablers
+capi_indicators=''			# API-defined indicators
+capi_clevels="89 99"
+
+
+# any unusual or platform-specific extra C-compiler flags we may require:
+capi_try_cflags=''
+capi_try_ldflags=''
+capi_try_libs="-lelf:-laout"
+
+
+# any other APIs we depend on:
+capi_dep_cflags=""
+capi_dep_ldflags=""
+capi_dep_libs=""
+
+
+#desc: Determine the C-compiler flags needed to get the $capi_desc API.
+
+#cvar: CONF_${capi_name}_CFLAGS/_LDFLAGS/_LIBS
+
+#out: relevant "makefile" variable-definitions.
+
+
+eval status='$CONF_'"${capi_name}"'_PROBED'
+test -n "$status" && exit "$status"
+. mod.start
+
+
+# build a small ANSI C source file that uses "nlist()" facilities:
+#
+cat > /tmp/$$.c << EOT
+#include <nlist.h>
+#include <sys/types.h>
+
+int main(ac, av)
+	unsigned int ac;
+	char **av;
+	{
+	int i, n;
+	struct nlist namelist[2];
+
+	namelist[0].n_name = "main";
+	namelist[0].n_value = 0;
+
+	namelist[1].n_name = NULL;
+	namelist[1].n_value = 0;
+
+	nlist("/dev/null", namelist);
+
+	return (0);
+	}
+EOT
+
+. mod.capisearch

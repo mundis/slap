@@ -1,0 +1,142 @@
+##############################################################################
+# NOTICE: exit codes must be as follows:
+#
+#	0:	values set, requested facility is available
+#	1:	values set, requested facility is NOT available
+#	2:	values could not be determined
+#	3:	-cflags or -help was specified (thus values have not been set)
+#	4:	complete failure: could not even try to determine values
+##############################################################################
+
+###########################################################################
+#########      Boilerplate helper main program, do not edit!     ##########
+###########################################################################
+
+# first, generate my own basename, for use in help/diagnostic/other messages;
+# using a slow but extremely portable method...
+me="`echo \"$0\" | sed -e 's:.*/::'`"
+
+# now find the pathname of this script, using method portable to
+# all Bourne-compatible shells (even as far back as 7th Edition UNIX)...
+#
+case "$0" in
+/*)	# invoked by absolute pathname
+	my_full_pathname="$0"
+	;;
+*/*)	# invoked by partially-qualified relative pathname
+	# NOTE: must strip any leading "./" from $0...
+	my_full_pathname="`pwd`/`echo \"$0\" | sed -e 's:^\./::'`"
+	;;
+*)	# invoked by unqualified pathname or arg0 has been munged by invoker
+	dir="`pwd`"
+	if test -f "$dir/$me" && test -r "$dir/$me" ; then
+		# invoked by unqualified pathname
+		my_full_pathname="$dir/$me"
+		my_full_dirname="$dir"
+	else
+		# arg0 has been munged, must search dirs in $PATH
+		oldIFS="$IFS"
+		IFS=":"
+		for dir in $PATH ; do
+			if test -f "$dir/$me" && test -r "$dir/$me" ; then
+				my_full_pathname="$dir/$me"
+				my_full_dirname="$dir"
+			fi
+		done
+		IFS="$oldIFS"
+	fi
+	;;
+esac
+test -z "$my_full_dirname" && \
+	my_full_dirname="`echo \"$my_full_pathname\" | sed -e 's:/[^/]*$::'`"
+
+# now, set PATH to locate 'Configure' utilities, as I may need them...
+PATH="${my_full_dirname}:${my_full_dirname}/..:${PATH}"
+
+# now determine what to do based on flags...
+#
+t='        '
+case "$1" in
+
+-cflags|--cflags)
+	exec 1>&2
+	state=''
+	while read key text ; do
+		case "$key" in
+		'#opt:')
+			state=1
+			case "$text" in
+			-*)
+				echo "${t}`eval echo \"$text\"`"
+				;;
+			*)
+				echo "${t}${t}`eval echo \"$text\"`"
+				;;
+			esac
+			;;
+		*)
+			test -n "$state" && break
+			;;
+		esac
+	done <"$my_full_pathname"
+	exit 3
+	;;
+-configure|--configure)
+	# handled below...
+	;;
+-help|--help|*)
+	exec 1>&2
+	echo "${me} is a 'Configure' helper."
+	echo ''
+	echo "usage: $me [ -help | -cflags | -configure ]" \
+		"[ <'Configure' options> ]"
+	echo ''
+	state=''
+	while read key text ; do
+		case "$key" in
+		'#desc:')
+			state=1
+			eval "echo \"$text\""
+			;;
+		*)
+			test -n "$state" && break
+			;;
+		esac
+	done <"$my_full_pathname"
+	echo ''
+	echo 'Options:'
+	echo "$t"'-help   print full help on this module to stderr, and exit.'
+	echo "$t"'-cflags describe the 'Configure' command-line flags that'
+	echo "${t}$t"'this helper handles, to stderr, and exit.'
+	echo "$t"'-configure'
+	echo "${t}${t}process relevant 'Configure' command-line flags, probe the"
+	echo "${t}${t}the local system for relevant settings, set the"
+	state=''
+	while read key text ; do
+		case "$key" in
+		'#cvar:')
+			if test -z "$state" ; then
+				echo "${t}${t}`eval echo \"'Configure' variables ${text},\"`"
+			else
+				eval echo 'echo "${text},"'
+			fi
+			state=1
+			;;
+		'#out:')
+			state=2
+			echo "${t}${t}`eval echo 'and emit $text'`"
+			;;
+		'')
+			;;
+		*)
+			test -n "$state" && break
+			;;
+		esac
+	done <"$my_full_pathname"
+	exec "$my_full_pathname" -cflags
+	exit 3	# paranoia
+	;;
+esac
+shift || exit 4
+
+trap "trap '' 1 2 3 13 15 ; cd ; rm -rf /tmp/$$.* ; exit 4" 1 2 3 13 15

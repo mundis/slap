@@ -1,0 +1,31 @@
+#!/bin/sh
+exec 9>&2 2>/dev/null
+if ps2pdf - - </dev/null >/dev/null 2>&1 ; then
+	if test "X$1" = X ; then
+		input="-"
+	else
+		input="$1"
+	fi
+	exec 2>&9
+	ps2pdf $input -
+else
+	if distill -noprefs -compatlevel 3 </dev/null >/dev/null 2>&1 ; then
+		exec 2>&9
+		trap 'trap "" 1 2 3 13 15; rm -f /tmp/$$.ps; exit 1' 1 2 3 13 15
+		if test "X$1" = X ; then
+			cat >/tmp/$$.ps || exit 1
+		else
+			cp "$1" /tmp/$$.ps || exit 1
+		fi
+		s=1
+		if distill -noprefs /tmp/$$.ps 2>/dev/null ; then
+			cat /tmp/$$.pdf && s=0
+		else
+			echo "$0: distiller failed" 1>&2
+		fi
+		rm -f /tmp/$$.ps /tmp/$$.pdf
+		exit "$s"
+	else
+		exit 1
+	fi
+fi

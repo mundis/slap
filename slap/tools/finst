@@ -1,0 +1,121 @@
+#!/bin/sh
+# Simplex portable UNIX file-installer.
+#
+# This program uses the bare minimum of shell and external facilities,
+# so that it will work even on ancient (c.1980) UNIX and UNIX-like
+# systems.
+#
+##############################################################################
+#
+# Copy files to a destination (file or directory), optionally setting owner,
+# owning-group, and access-permissions of the delivered files.
+# See USAGE below for command-line syntax.
+#
+# If installation of any file fails, subsequent files are
+# not attempted.
+#
+# Any existing destination files are removed beforehand.
+#
+# NOTE: the invoker may require special priviledges to set the
+# owner and/or owning group of the delivered files.
+#
+# "mode" is passed to the chmod program without interpretation.
+# NOTE: portable "mode" values are usually numeric
+# and less than 01000 (octal).
+#
+############################################################################
+
+ME="`echo $0 | sed -e 's|^.*/||'`"
+USAGE="usage: $ME [ -u user -g group -m mode ] files destination"
+
+# parse flags:
+#
+while [ "true" = "true" ] ; do
+	case $1 in
+		-u)	shift
+			if [ -z "$1" ] ; then
+				echo "$USAGE" 1>&2
+				exit 1
+			fi
+			user="$1"
+			shift
+			;;
+		-u*)	user="`echo $1 | sed -e 's/-u//'`"
+			shift
+			;;
+		-g)	shift
+			if [ -z "$1" ] ; then
+				echo "$USAGE" 1>&2
+				exit 1
+			fi
+			group="$1"
+			shift
+			;;
+		-g*)	group="`echo $1 | sed -e 's/-g//'`"
+			shift
+			;;
+		-m)	shift
+			if [ -z "$1" ] ; then
+				echo "$USAGE" 1>&2
+				exit 1
+			fi
+			mode="$1"
+			shift
+			;;
+		-m*)	mode="`echo $1 | sed -e 's/-m//'`"
+			shift
+			;;
+		--)	shift
+			break
+			;;
+		-*)	echo "$USAGE" 1>&2
+			exit 1
+			;;
+		*)
+			break
+			;;
+	esac
+done
+
+[ "$#" -lt 2 ] && echo "$USAGE" 1>&2 && exit 1
+
+# get list of sources and the destination name:
+#
+n=1
+for arg in $* ; do
+	[ "$n" -lt "$#" ] && list="$list $arg"
+	n="`expr $n + 1`"
+done
+dest="$arg"
+
+# when copying multiple files, destination MUST be a directory:
+#
+if [ "$#" -gt 2 ] ; then
+	if [ -d "$dest" ] ; then
+		echo >/dev/null
+	else
+		echo "$ME error: destination for multiple files is not a directory" 1>&2
+		exit 1
+	fi
+fi
+
+# now install the files!
+#
+for src in $list ; do
+	if [ -d "$dest" ] ; then
+		target="${dest}/`basename $src`"
+	else
+		target="${dest}"
+	fi
+	rm -f "$target" 2>/dev/null
+	cp $src "$target" || exit 1
+	if [ -n "$user" ] ; then
+		chown "$user" "$target" || exit 1
+	fi
+	if [ -n "$group" ] ; then
+		chgrp "$group" "$target" || exit 1
+	fi
+	if [ -n "$mode" ] ; then
+		chmod "$mode" "$target" || exit 1
+	fi
+done

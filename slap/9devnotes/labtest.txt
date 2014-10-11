@@ -1,0 +1,4 @@
+slap version 2.2
+by Mike Spooner
+
+SmartLabel printing for UNIX

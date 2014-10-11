@@ -1,0 +1,24 @@
+./slap -o/dev/cua1 -pplus labtest.txt
+
+syscall      seconds   calls  errors
+_exit            .00       1
+read            1.01    2276
+write            .97    1829
+open             .01      10      3
+close            .02       7
+time             .35    1927
+brk              .00      12
+lseek            .05     263
+fstat            .01       4
+ioctl            .25     709      2
+execve           .00       1
+fcntl            .00       2
+sigprocmask      .00      12
+sigaction        .00       8
+sigpending       .00       1
+mmap             .00       6
+munmap           .00       1
+                ----     ---    ---
+sys totals:     2.67    7069      5
+usr time:        .31
+elapsed:       23.06

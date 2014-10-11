@@ -1,0 +1,129 @@
+# Determine the C-compiler flags needed to get the
+# "Mike's Utility Library" ("MJSU") API.
+# Print it as a Makefile definition to stdout, and set equivalent
+# environment variables.
+#
+
+# first locate an ANSI C compiler, if possible:
+#
+[ "$ACC" = "" ] && . ansic.cmd >/dev/null
+
+
+echo "searching for Mike's Utility Library" 1>&2
+
+# build a small ANSI C source file that uses MJSU facilities:
+#
+cat > /tmp/$$.c << 'EOT'
+#include <stdio.h>
+#include <stdlib.h>
+#include "mjsu.h"
+INT main(UINT, CHAR **);
+
+INT main(UINT ac, CHAR **av)
+	{
+	BOOL a = NO;
+	SHORT b = 0;
+	LONG c = 0L;
+	CHAR *d = NULL;
+	MBITMAP *p;
+
+	getflags(&ac, &av, "a,b#,c##,d*", "files", &a, &b, &c, &d);
+	if ((p = mbm_buy(5, 5, NO)))
+		mbm_free(p);
+	if (a)
+		printf("%ld\n", c);
+	return (EXIT_SUCCESS);
+	}
+EOT
+
+
+# Hunt for the library...
+#
+found=no
+dir=""
+# only if we can...
+#
+if [ "$ACC" != "" ] ; then
+
+	# and only if we need to...
+	#
+	$ACC -o /tmp/$$.exe /tmp/$$.c >/dev/null 2>&1
+	chmod +x /tmp/$$.exe 2>/dev/null
+	if [ -x "/tmp/$$.exe" ] && [ "`/tmp/$$.exe -a -c23`" = "23" ] ; then
+		# Wow! no extra compiler flags needed at all!
+		found=yes
+	else
+		# Start hunting with the obvious directories:
+		#
+		list="/ /usr /usr/local /opt/local /opt"
+
+		# add contents of LD_LIBRARY_PATH and PATH
+		#
+		list="$list `echo ${LD_LIBRARY_PATH}: | sed -e 's/:/ /g' -e 's:/[^/][^/]* : :g'`"
+		list="$list `echo ${PATH}: | sed -e 's/:/ /g' -e 's:/[^/][^/]* : :g'`"
+
+		# and finish with the outside chances:
+		#
+		list="$list $HOME"	# you never know...
+
+		# go find...
+		#
+		for d in $list ; do
+			if [ -f ${d}/include/mjsu.h ] ; then
+				# Aha...
+				$ACC -I$d/include -o /tmp/$$.exe /tmp/$$.c -L$d/lib -lmjsu >/dev/null 2>&1
+				chmod +x /tmp/$$.exe 2>/dev/null
+				if [ -x "/tmp/$$.exe" ] && [ "`/tmp/$$.exe -a -c23`" = "23" ] ; then
+					# Got it!
+					found=yes
+					dir=$d
+					break
+				fi
+			fi
+		done
+	fi
+fi
+
+if [ "$found" = no ] ; then
+	dir="/somewhere"
+fi
+
+
+# and output...
+#
+if [ "$found" = no ] ; then
+	status=1
+	echo "\007" 1>&2
+	cat << EOT 1>&2
+	********************  W A R N I N G  ************************
+	******							*****
+	******	Cannot locate Mike's Utility Library (MJSulib)	*****
+	******							*****
+	*************************************************************
+
+	If you have already installed MJSulib, you will need to manually
+	adjust the following variables in the makefile:
+
+		MJSU_INCLUDE=-I/somewhere/include
+		MJSU_LIBRARY=-L/somewhere/lib -lmjsu
+
+	Otherwise, you should install MJSulib then rerun this script.
+
+EOT
+	echo "Press RETURN to continue \c" 1>&2
+	read dummy
+	echo "" 1>&2
+fi
+
+cat << EOT
+
+# Extra C compiler flags needed to get the "MJSU (Mike's Utility)" API,
+# expressed as -I, -L or -l flags.
+#
+MJSU_INCLUDE=-I$dir/include
+MJSU_LIBRARY=-L$dir/lib -lmjsu
+
+EOT
+
+export MJSU_INCLUDE
+export MJSU_LIBRARY

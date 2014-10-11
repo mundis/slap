@@ -1,0 +1,72 @@
+#!/bin/sh
+# @(#)mjsu.api	3.0	17may2009 MJS
+#------------------------------------------------------------------------------
+# 3.0	17may2009 MJS	compatibility with new "soft/hard" Configure mechanism,
+#			also removal of temp files on interrupt.
+# 2.0	27sep2004 MJS	revised to be used as a Configure-callable module.
+# 1.0	15aug1998 MJS	original version.
+#------------------------------------------------------------------------------
+capi_name=MJSU
+capi_desc="Mikes' Utility Library (libmjsu)"
+capi_enabler=''				# API-defined enablers
+capi_indicators=''			# API-presence detectors
+capi_clevels="89 99"
+
+
+# any unusual or platform-specific extra C-compiler flags we may require:
+capi_try_cflags=''
+capi_try_ldflags=''
+capi_try_libs='-lmjsu'
+
+# any other APIs we depend on:
+capi_dep_cflags=""
+capi_dep_ldflags=""
+capi_dep_libs=""
+
+
+#desc: Determine the C-compiler flags needed to get the
+#desc: $capi_desc API, if available.
+#desc:
+#desc: NOTE: said software is available from http://members.tripod.com/uutil.
+#desc:
+#desc: If the API is not available, $0 returns failure and the C symbol
+#desc: $capi_indicator will be undefined.
+
+#cvar: CONF_${capi_name}_CFLAGS/_LDFLAGS/_LIBS
+
+#out: relevant "makefile" variable-definitions.
+
+
+
+eval status='$CONF_'"${capi_name}"'_PROBED'
+test -n "$status" && exit "$status"
+
+. mod.start
+
+
+# build a small ANSI C source file that uses MJSU facilities:
+#
+cat > /tmp/$$.c << 'EOT'
+#include <stdio.h>
+#include <stdlib.h>
+#include "mjsu.h"
+INT main(UINT, CHAR **);
+
+INT main(UINT ac, CHAR **av)
+	{
+	BOOL a = NO;
+	SHORT b = 0;
+	LONG c = 0L;
+               CHAR *d = NULL;
+	MBITMAP *p;
+
+	getflags(&ac, &av, "a,b#,c##,d*", "files", &a, &b, &c, &d);
+	if ((p = mbm_buy(5, 5, NO)))
+		mbm_free(p);
+	if (a)
+		printf("%ld\n", c);
+	return (EXIT_SUCCESS);
+	}
+EOT
+
+. mod.capisearch

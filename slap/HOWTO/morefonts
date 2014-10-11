@@ -1,0 +1,71 @@
+slap/HOWTO/morefonts
+====================
+Edition 1.1, 09feb2001 by MJS
+
+
+The slap distribution includes a few bitmapped fonts, in a custom
+file-format.
+
+A common question is how to use *other* fonts with slap. This document
+describes when you can do it, what you need, and how to do it.
+
+
+Fonts from an X Font Server
+---------------------------
+
+slap comes with tools to generate bitmapped versions of *scalable* fonts
+served up by an X Font Server.
+
+You will need a working copy of the X Window System (release X11R6 or later)
+either on the machine where you build slap, or another machine reachable over
+the network. You will also need the X Font Server to be configured to serve
+up the font you desire, see your system manpages for "xfs" or "fs".
+
+Most X Font Servers can be configured to use scalable PostScript fonts;
+a few can also handle scalable TrueType fonts. If the font you want to use
+is not included with your X Font Server, you will need to get a version of
+it in a format that your X Font Server can handle, usually PostScript.
+
+NOTE: you should avoid the X11R5 font-server, as it does not handle
+"rectangular" resolutions such as 160x98 dpi.
+
+REMINDER: the results of converting *non-scalable* fonts this way will be
+utterly horrible.
+
+
+The procedure is as follows:
+
+(1) Build the "makefont" program that comes with slap:
+
+        make sdk
+
+(2) use the standard X "showfont" program to extract an ASCII-format
+    bitmap of the font at the right resolution from the font-server. 
+    The "generate" script in the "fonts" subdirectory of the slap
+    distribution is the one I use to generate the standard fonts, and is
+    well worth a look.
+
+         showfont -fn "-acme-barcode39-*-*-*--0-120-203-203-*" >foo.pro
+         showfont -fn "-acme-barcode39-*-*-*--0-120-160-98-*" >foo.plus
+
+         # -120- gives a 12-point font, change as needed. Or even generate
+         # font files for several point-sizes. Do not change the other numbers,
+	 # they are the (two) inherent resolutions of the SLP printers.
+
+(3) Feed the ASCII bitmap font into the "makefont" program (the second
+    argument to makefont is the name of the output file):
+
+         makefont foo.pro acme-12.pro
+         makefont foo.plus acme-12.plus
+
+(4) Install the created binary bitmap font file alongside the standard
+    slap fonts.
+
+         mv acme-12.* /usr/local/lib/slapfonts   # or whatever
+
+
+Well done! You are now ready to print with your new font, eg:
+
+        slap -o /dev/ttyS1 -m std -p pro -f acme-12 < the_input_file
+
+-------------------------------------------------------------------------------

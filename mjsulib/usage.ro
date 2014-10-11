@@ -1,0 +1,92 @@
+'\" t
+.\" MJS Portable C Library
+.\" Module: quick-reference manual-page for usage()
+.\"
+.\" Copyright (c) 1991-1994 Mike Spooner
+.\"----------------------------------------------------------------------
+.\" This program is free software; you can redistribute it and/or modify
+.\" it under the terms of the GNU General Public License as published by
+.\" the Free Software Foundation; either version 2 of the License, or
+.\" (at your option) any later version.
+.\"
+.\" This program is distributed in the hope that it will be useful,
+.\" but WITHOUT ANY WARRANTY; without even the implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+.\" GNU General Public License for more details.
+.\"
+.\" You should have received a copy of the GNU General Public License
+.\" along with this program; if not, write to the Free Software
+.\" Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+.\"----------------------------------------------------------------------
+.TD
+.TH usage @LF 14nov94 "MJSulib"
+.SH NAME
+usage \- print usage message and exit
+.SH SYNOPSIS
+#include "mjsu.h"
+
+VOID usage(CHAR *fmt, ...);
+.SH DESCRIPTION
+\fBusage()\fP
+prints an error message to the
+standard-error
+channel and then terminates the calling process by
+making the call:
+.nf
+
+	exit(EXIT_FAILURE);
+
+.fi 
+The emitted message has the following
+structure:
+.nf
+
+	usage: \fIprocess-name\fP \fImessage\fP
+
+.fi
+The
+.I process-name
+is that
+recorded by an earlier call to
+\fBgetflags(@LF)\fP,
+if any, or the string "?".
+.LP
+The
+.I message
+is constructed from the arguments in the same way as is done by
+\fBprintf\fP(@LF).
+.B usage()
+is conventionally used for reporting
+command-line errors, in which case
+.I message
+should represent the valid arguments for the calling program.
+.SH RETURNS
+\fBusage()\fP
+does not return.
+.SH EXAMPLE
+For a program that accepts an optional flag and expects two filename arguments:
+.nf
+
+	INT main(UINT ac, CHAR **av)
+		{
+		BOOL verbose = NO;
+
+		getflags(&ac, &av, "v", "src dest", &verbose);
+		if (ac < 1)
+			usage("[-v] src dest");
+		
+		if (process(av[0], av[1], verbose))
+			return (EXIT_SUCCESS);
+		else
+			return (EXIT_FAILURE);
+		}
+.fi
+.SH SEE ALSO
+\fBgetflags(@LF)\fP, \fBerror(@LF)\fP, \fBremark(@LF)\fP, \fBwarning(@LF)\fP,
+\fBmjsu(@MI)\fP.
+.LP
+\fBexit()\fP and \fBfprintf()\fP, 
+as defined by ANSI X3.159-1989.
+.SH AVAILABILITY
+\fBusage()\fP
+is written in C, conforming to ANSI X3.159-1989 (hosted program environment).

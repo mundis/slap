@@ -1,0 +1,75 @@
+'\" t
+.\" MJS Portable C Library
+.\" Module: quick-reference manual-page for vec_dup()
+.\"
+.\" Copyright (c) 1991 Mike Spooner
+.\"----------------------------------------------------------------------
+.\" This program is free software; you can redistribute it and/or modify
+.\" it under the terms of the GNU General Public License as published by
+.\" the Free Software Foundation; either version 2 of the License, or
+.\" (at your option) any later version.
+.\"
+.\" This program is distributed in the hope that it will be useful,
+.\" but WITHOUT ANY WARRANTY; without even the implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+.\" GNU General Public License for more details.
+.\"
+.\" You should have received a copy of the GNU General Public License
+.\" along with this program; if not, write to the Free Software
+.\" Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+.\"----------------------------------------------------------------------
+.TD
+.TH vec_dup @LF "17mar91" "MJSulib"
+.SH NAME
+vec_dup \- duplicate a vector of strings
+.SH SYNOPSIS
+#include "mjsu.h"
+
+CHAR **vec_dup(CHAR **vec, BOOL force);
+.SH DESCRIPTION
+\fBvec_dup()\fP creates a duplicate of the string vector at \fIvec\fP.
+Storage for the duplicate is allocated from the heap.
+.LP
+If the allocation request cannot be satisfied and \fIforce\fP is YES,
+the calling process is terminated by the following call:
+.nf
+ 
+        error("out of memory");
+ 
+.fi
+.LP
+The function \fBvec_free(@LF)\fP can be used to deallocate the memory
+allocated by \fBvec_dup()\fP.
+.SH RETURNS
+If successful, \fBvec_dup()\fP returns a pointer to the new string vector.
+Otherwise, NULL (if anything) is returned.
+.SH EXAMPLE
+To take a working copy of the command-line:
+.nf
+
+	INT main(UINT argc, CHAR **argv)
+		{
+		CHAR **av;
+
+		av = vec_dup(argv);
+		if (!av)
+			exit(EXIT_FAILURE);
+
+		\|.\|.\|.\|
+
+		vec_free(av);
+		return (EXIT_SUCCESS);
+		}
+
+.fi
+.SH SEE ALSO
+\fBvec_buy(@LF)\fP, \fBvec_free(@LF)\fP,
+\fBmjsu(@MI)\fP.
+.LP
+\fBmalloc()\fP as defined by ANSI X3.159-1989.
+.SH AVAILABILITY
+\fBvec_dup()\fP is written in C, conforming to ANSI X3.159-1989.
+.SH NOTES
+The term \fIstring vector\fP is not universally known. The simplest way
+to define the term is by example: the second argument to \fBmain()\fP is
+a string vector.

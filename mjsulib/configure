@@ -1,0 +1,271 @@
+#!/bin/sh
+# Generic Configure script, MJS config toolset.
+# @(#)Configure 3.2.2 28jan2013 MJS
+#------------------------------------------------------------------------------
+# 3.2.2	28jan2013 MJS	auto-generate PKG_NAME and PKG_RELEASE into makefile.
+# 3.2.1	12feb2012 MJS	adjusted for CYGWIN/bash compatibility.
+# 3.2   28feb2010 MJS   many improvements: adapted to new module interface
+#			(replace calls to setvar with setvar.___);
+#			all errors to stderr;
+#			proper distinction between optional/mandatory modules;
+#			config.h handling;
+#			better comments in generated files;
+#			ability to also use other configuration schemes from
+#			modules, when present (esp: gtk-config et al, pkgconf).
+# 3.1   17may2009 MJS   compatibility with new "soft/hard" Configure mechanism,
+#		       also removal of temp files on interrupt,
+#			v7 portability fixes.
+# 3.0	27sep2004 MJS	data-driven modularity via config.in.
+# 2.0	15feb2001 MJS	full rewrite: revised to use Configure-callable modules.
+# 1.0	1998 MJS	original version.
+#------------------------------------------------------------------------------
+
+# set per-run 'Configure' variables:
+#
+CONF_STATUS=0 ; export CONF_STATUS
+CONF_CACHE=/tmp/$$.cache ; export CONF_CACHE
+
+
+# arrange to tidy up and return status on interrupt or exit.
+# NOTE: single-quotes are *needed* for these!
+#
+trap 'trap "" 1 2 3 13 15; rm -f makefile $CONF_CACHE /tmp/$$ /tmp/$$.*; CONF_STATUS=1; exit' 1 2 3 13 15
+trap 'rm -f $CONF_CACHE /tmp/$$ /tmp/$$.* ; exit $CONF_STATUS'	0
+
+
+test -f makefile && make clean >/dev/null 2>&1
+rm -f .makefile.bak .config.h.bak
+test -f makefile && mv makefile .makefile.bak
+test -f config.h && mv config.h .config.h.bak
+
+PATH=tools/config:${PATH}:. ; export PATH
+
+
+# read in the gross package descriptor, to set CONF_PKG_NAME, CONF_PKG_RELEASE
+# and CONF_PKG_FULLNAME amonst other things...
+#
+if test -f "dist.info" && . ./dist.info ; then
+	if test -z "$pkgname" ; then
+		echo "$0 panic: dist.info does not define \"pkgname\"" 1>&2
+		exit 1
+	elif test -z "$emailaddr" ; then
+		echo "$0 panic: dist.info does not define \"emailaddr\"" 1>&2
+		exit 1
+	fi
+	if test -n "$major" ; then
+		release="$major"
+		test -z "$minor" || release="${release}.$minor"
+		test -z "$micro" || release="${release}.$micro"
+	fi
+	CONF_PKG_DESC="$desc"
+	CONF_PKG_NAME="$pkgname"
+	CONF_PKG_FULLNAME="$pkgname"
+	test -n "$release" && CONF_PKG_FULLNAME="${CONF_PKG_FULLNAME}-$release"
+	CONF_PKG_RELEASE="$release"
+
+else
+	echo "$0 panic: could not read dist.info" 1>&2
+	exit 1
+fi
+
+
+# scan for -help, --help, -usage or -? command-line flags: if discovered,
+# call defined configure subscripts with same, to display Configure usage.
+#
+for flag in "$@" ; do
+	case "$flag" in
+	-help|--help|-usage|'-?')
+		echo '' 1>&2
+		echo 'usage: Configure [ options ]' 1>&2
+		echo '' 1>&2
+		# ask subscripts to print flag information...
+		if test -f config.in ; then
+			while read cmd object verb datum ; do
+				case "$cmd" in
+				"#"*|subdir)
+					continue
+					;;
+				esac
+				case "$verb" in
+				using)
+					# SPOOF: whinge if datum not exist!!
+					"$datum" -cflags 1>&2
+					;;
+				esac
+			done < config.in
+		fi
+		echo '' 1>&2
+		exit 2
+		;;
+	esac
+done
+
+
+# announce intentions:
+#
+echo "Configuring build of $CONF_PKG_FULLNAME (${CONF_PKG_DESC})"
+
+# create per-run variable-cache file:
+#
+echo >"$CONF_CACHE" || exit 1
+# plug-in the package-descriptor variables:
+echo CONF_PKG_DESC="'$CONF_PKG_DESC'" >>"$CONF_CACHE"
+echo CONF_PKG_NAME="'$CONF_PKG_NAME'" >>"$CONF_CACHE"
+echo CONF_PKG_FULLNAME="'$CONF_PKG_FULLNAME'" >>"$CONF_CACHE"
+echo CONF_PKG_RELEASE="'$CONF_PKG_RELEASE'" >>"$CONF_CACHE"
+
+
+# set Configure defaults from config.in...
+#
+if test -f "config.in" ; then
+	while read cmd object verb datum ; do
+		case "$cmd" in
+		default)
+			setvar.___ "$object" "$datum"
+			;;
+		esac
+		. "$CONF_CACHE"
+	done <config.in
+fi
+. "$CONF_CACHE"
+
+
+# generate makefile boilerplate:
+#
+cat > makefile << EOT
+# local build configuration for $CONF_PKG_FULLNAME (${CONF_PKG_DESC}).
+##############################################################################
+# This makefile was generated automatically by "Configure".
+#
+# WARNING:
+# CHANGES YOU MAKE TO THIS FILE WILL BE LOST WHEN "Configure" IS RERUN.
+#
+# If you have to make changes to the generated makefile, save your new
+# version under a different name.
+#
+##############################################################################
+PKG_NAME=$CONF_PKG_NAME
+PKG_RELEASE=$CONF_PKG_RELEASE
+
+
+##############################################################################
+#
+# Compiler/Platform/Site-specific configuration settings:
+#
+##############################################################################
+
+EOT
+
+# read and process 'requirements'
+#
+if test -f config.in ; then
+	while read cmd object verb datum ; do
+		s=1	# until proven otherwise
+		case "$cmd" in
+		define)
+			setvar.___ "$object" "$datum" && s=0
+			;;
+		append)
+			# whinge if cannot append...
+			cat /dev/null >>"$object" || setvar.___ CONF_STATUS 1
+			"$datum" -configure "$@" >>"$object"
+			s="$?"
+			;;
+		create)
+			# whinge if cannot create...
+			cat /dev/null > "$object" || setvar.___ CONF_STATUS 1
+			"$datum" -configure "$@" >"$object" && s=0
+			echo "created file: $object" 1>&2
+			;;
+		subdir)
+			# run Configure in a named other dir, with canned args
+			echo "notice: Configuring $object" 1>&2
+			eval "( cd \"$object\" && ./Configure $datum )" && s=0
+			;;
+		''|default)
+			s=0
+			;;
+		esac
+		if test "$verb" != optional && test "$s" -ne 0 ; then
+			echo "*** ERROR: required facility not detected ***" 1>&2
+			sleep 2
+			setvar.___ CONF_STATUS 9
+		fi
+		. "$CONF_CACHE"
+	done <config.in
+fi
+. "$CONF_CACHE"
+
+# if config.h exists, prepend boilerplate warnings:
+if test -f config.h ; then
+	cat >>/tmp/$$.ch <<EOT
+/* local software configuration for $CONF_PKG_FULLNAME (${CONF_PKG_DESC}).
+ *
+ * This file was generated automatically by "Configure".
+ *
+ * WARNING:
+ * CHANGES YOU MAKE TO THIS FILE WILL BE LOST WHEN "Configure" IS RERUN.
+ *
+ * If you have to make changes to the generated config.h file, save your new
+ * version under a different name.
+ */
+
+EOT
+	if cat config.h >>/tmp/$$.ch && cp /tmp/$$.ch config.h ; then
+		rm -f /tmp/$$.ch
+	else
+		CONF_STATUS=1
+		echo "ERROR: could not generate config.h" 1>&2
+		exit "$CONF_STATUS"
+	fi
+fi
+
+# fill in makefile from the template...
+echo "" >>makefile
+# auto-detect manpage numbering scheme:
+#
+if [ -d /usr/man/man1m ] || [ -d /usr/share/man/man1m ]  ||
+		[ -d /usr/man/sman1m ] ; then
+	# SYSV-style manpage-numbering
+	sed -e 's/@UC/1/g' \
+		-e 's/@SC/2/g' \
+		-e 's/@LF/3/g' \
+		-e 's/@FF/4/g' \
+		-e 's/@MI/5/g' \
+		-e 's/@GD/6/g' \
+		-e 's/@SF/7/g' \
+		-e 's/@AC/1m/g'
+else
+	# BSD-style man-age-numbering
+	sed -e "s/@UC/1/g" \
+		-e "s/@SC/2/g" \
+		-e "s/@LF/3/g" \
+		-e "s/@FF/5/g" \
+		-e "s/@MI/7/g" \
+		-e "s/@GD/6/g" \
+		-e "s/@SF/4/g" \
+		-e "s/@AC/8/g"
+fi < template.mkf >>makefile
+
+
+# check for errors...
+#
+. "$CONF_CACHE"
+if test "$CONF_STATUS" -ne "0" ; then
+	echo ''
+	echo '----------------------------------------------------------------'
+	echo "ERROR: could not configure $CONF_PKG_FULLNAME on this system"
+	echo ''
+	echo "Some configuration settings for $CONF_PKG_FULLNAME could not be"
+	echo 'determined automatically. You may need to edit the generated'
+	echo "\"`pwd`/makefile\" and/or \"`pwd`/config.h\"."
+	echo ''
+	test -n "$emailaddr" && echo "Email $emailaddr if you need help."
+	echo '----------------------------------------------------------------'
+else
+	echo ''
+	echo '----------------------------------------------------------------'
+	echo "$CONF_PKG_FULLNAME ($CONF_PKG_DESC) build configured OK"
+fi 1>&2
+
+exit "$CONF_STATUS"

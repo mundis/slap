@@ -1,0 +1,77 @@
+#!/bin/sh
+# @(#)glib.api	1.0	17may2009 MJS
+#------------------------------------------------------------------------------
+# 1.0	17may2009 MJS	original version.
+#------------------------------------------------------------------------------
+capi_name=GLIB1
+capi_desc="(GNOME) glib v1"
+capi_enablers=''			# API enablers
+capi_indicators='GLIB_MAJOR_VERSION>=1'	# API-defined indicators
+capi_clevels="89 89X 99"
+
+
+# name of usual API compiler-config program, if any: 
+capi_cfg_prog=glib-config
+
+capi_version=[123456789].*	# a "case" statement label pattern,
+				# no spaces allowed,
+
+# any additional or platform-specific extra C-compiler flags we may require:
+capi_try_cflags=""
+capi_try_ldflags=''
+capi_try_libs=''
+
+
+# any other APIs we depend on:
+capi_dep_cflags=''
+capi_dep_ldflags=''
+capi_dep_libs=''
+
+
+#desc: Determine the C-compiler flags needed to get the
+#desc: $capi_desc API, if available.
+#desc:
+#desc: If the API is not available, $0 returns failure and the C
+#desc: preprocessor expression $capi_indicators will be false or undefined.
+
+
+#opt: -${capi_cfg_prog}=PROGRAM_NAME
+#opt:	use the "${capi_cfg_prog}" program or the "pkg-config" program
+#opt:	to get the definitions needed to use the $capi_name API,
+#opt:	if you need to override the default automatic detection.
+
+#cvar: CONF_${capi_name}_CFLAGS/_LDFLAGS/_LIBS
+#out: relevant "makefile" variable-definitions.
+
+
+eval status='$CONF_'"${capi_name}"'_PROBED'
+test -n "$status" && exit "$status"
+. mod.start
+
+for flag in "$@" ; do
+	case "$flag" in
+	-"$capi_cfg_prog"=*|--"$capi_cfg_prog"=*)
+		capi_cfg_prog="`echo $flag | sed -e 's/^[^=]*=//'`"
+		test -z "$capi_cfg_prog" && exec "$my_full_pathname" -help
+		;;
+	esac
+done
+
+# build a small null-runnable GLIB1 program that links much API stuff...
+#
+cat > /tmp/$$.c <<'EOT'
+/* GLIB1 probe program
+ */
+#include <glib.h>
+
+int main(int argc, char *argv[])
+	{
+	/* NOTE: does not allow compiler to optimise-away all the other code
+	 * so that link-time availability is probed also
+	 */
+	if ((argc != 991) && (glib_major_version == GLIB_MAJOR_VERSION))
+		return (GLIB_MAJOR_VERSION == 1) ? 0 : 1;
+	}
+EOT
+
+. mod.capisearch

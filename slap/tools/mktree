@@ -1,0 +1,148 @@
+#!/bin/sh
+# Portable version of "mkdirhier".
+#
+# This program uses the bare minimum of shell and external facilities,
+# so that it will work even on ancient (c.1980) UNIX and UNIX-like
+# systems.
+#
+#######################################################################
+#
+# Create a directory and any needed parent directories.
+#
+# All sorts of wierd and wonderful directory pathnames are handled,
+# even network paths specified with a leading double-slash.
+#
+#######################################################################
+# Test this program against the following wierd directory-names:
+#
+#	/usr			/usr/tmp		/usr/tmp/.
+#	/usr/./tmp		/			/.
+#	/./etc/../var/tmp	a/b			./a/b	
+#	a			./a			./a/../b
+#	./a/../b/c		/a/b/c/./.././../d	./../.
+#	.././..			//fred/usr/tmp		//fred/usr
+#	//fred			/var/tmp/..x/y../a	...
+#	/a/b/c/d/.../e		/a/b/c/d/...		../.../x/y
+#
+#######################################################################
+
+# discover my short name and my real pathname...
+#
+ME="`echo $0 | sed -e 's:^.*/::'`"
+case $0 in
+	/*)	# invoked by absolute pathname
+		REALME="$0"
+		;;
+	*)	# invoked by relative pathname
+		# NOTE: must strip any leading "./" from $0...
+		REALME="`pwd`/`echo $0 | sed -e 's:^\./::'`"
+		if [ -x "$REALME" ] && [ -f "$REALME" ] ; then
+			echo "" >/dev/null
+		else
+			# Hmmm, wierd parent shell on this system sets
+			# argument zero incorrectly, so have to trust
+			# $PATH and hope for the best...
+			REALME="$0"
+		fi
+		;;
+esac
+
+# parse flags (just so "-help" says something relevant):
+#
+USAGE="$ME pathname"
+while [ "true" = "true" ] ; do
+	case $1 in
+		-*)	echo "$USAGE" 1>&2
+			exit 1
+			;;
+		*)	break
+			;;
+	esac
+done
+
+
+# just a quick check to make sure we actually have something to do!
+#
+if [ "X$1" = "X" ] ; then
+	exit 0
+fi
+if [ -d "$1" ] ; then
+	exit 0
+fi
+
+
+
+# create the directory-tree...
+# Uses depth-first upward-recursion, to create any needed parents first...
+#
+# To ensure that only NEEDED parents are created, we must first convert
+# the directory name into an absolute one with no relative components...
+# However, be careful not to jumble directory names like "a/..b./.c../.../e"!
+# Also, some systems use a leading "//" to invoke network filesystem semantics,
+# which we must be careful not to circumvent (eg: by turning a leading
+# double-slash into a single one when not at the top of the tree).
+#
+
+# make absolute:
+case $1 in
+	/*)	dir="$1" ;;
+	*)	dir="`pwd`/$1" ;;
+esac
+
+# compress multiple slashes except for a leading double-slash...
+prev=""
+while [ "$prev" != "$dir" ] ; do
+	prev="$dir"
+	dir="`echo $dir | sed -e 's:\(..*\)//:\1/:g'`"
+done
+
+# the removal of "relative" sequences must be done in a loop, as
+# removal of one kind may reveal another...
+prev=""
+while [ "$prev" != "$dir" ] ; do
+
+	prev="$dir"
+
+	# strip trailing slashes, unless we have only "/" or "//":
+	dir="`echo $dir | sed -e 's:\(..*\)//*$:\1:g'`"
+
+	# handle "/./" sequences:
+	echo 1 > /dev/null
+	dir="`echo $dir | sed -e 's:/\./:/:g'`"
+	
+	# strip trailing "/.":
+	echo 2 > /dev/null
+	dir="`echo $dir | sed -e 's:/\.$::g'`"
+	
+	# due to absoluteness, cannot have leading "./"
+	
+	# purge "xxx/../" sequences:
+	echo 3 > /dev/null
+	dir="`echo $dir | sed -e 's:[^/][^/]*/\.\./::g'`"
+	
+	# strip trailing "xxx/..":
+	echo 4 > /dev/null
+	dir="`echo $dir | sed -e 's:[^/][^/]*/\.\.$::g'`"
+	
+	# due to absoluteness, cannot have leading "../"
+	
+done
+
+
+# the root directory is a slash-with-no-name, which is the
+# only directory name that may get reduced to nothing.
+[ "$dir" = "" ] && dir="/"
+
+# We cannot create the root directory (it must always exist), and it has
+# no parent, so just report success. Conveniently, this also stops the
+# recursion when it reaches the top.
+[ "$dir" = "/" ] && exit 0
+
+# now get name of parent directory, and recurse...
+# Note: a pathname of "//xxx" must be mapped to the parent "/", because
+# the root filesystem is the parent of the root of the network namespace...
+parent="`echo $dir | sed -e 's:\(.*\)/[^/][^/]*$:\1:'`"
+$REALME $parent && mkdir $dir && exit 0
+
+# failed if we get this far!
+exit 1
